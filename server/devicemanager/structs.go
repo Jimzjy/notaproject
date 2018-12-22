@@ -56,9 +56,11 @@ type Student struct {
 	Classes []*Class `gorm:"many2many:student_class;"`
 }
 
+// DevicePort: eg.(":8000")
 type Device struct {
 	gorm.Model
 	DevicePath string
+	DevicePort string
 }
 
 type Camera struct {
@@ -78,7 +80,7 @@ type Classes struct {
 }
 
 type ClassroomStats struct {
-	Classroom string `json:"classroom"`
+	ClassroomName string `json:"classroom_name"`
 	PersonCount int `json:"person_count"`
 	Persons []DetectedData `json:"persons"`
 }
@@ -111,7 +113,13 @@ type DeviceStatsTable struct {
 
 type ClassroomStatsTable struct {
 	gorm.Model
+	UpdateTime time.Time
 	PersonCount int
 	Persons []DetectedData
 	ClassroomID uint
+}
+
+type SingleClassroomStats struct {
+	UpdateTime time.Time `json:"update_time"`
+	ClassroomStats ClassroomStats `json:"classroom_stats"`
 }

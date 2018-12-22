@@ -70,15 +70,21 @@ func setupRouter() *gin.Engine {
 
 	// 点名
 	router.POST("/face_count", func(c *gin.Context) {
-
+		// TODO("face count")
 	})
 
 	// 教室状态
 	router.POST("/classrooms", func(c *gin.Context) {
-
+		if err := updateClassroomStats(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "update stats error"})
+		}
 	})
 	router.GET("/classrooms", func(c *gin.Context) {
-
+		if err := sendClassroomStats(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "get stats error"})
+		}
 	})
 
 	// 设备
@@ -319,14 +325,66 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 	return response, err
 }
 
-func updateClassroomStats(c *gin.Context) error {
-	var err error
-
+func updateClassroomStats(c *gin.Context) (err error) {
 	var stats Stats
 	err = c.ShouldBindJSON(&stats)
 	if err != nil {
-		return err
+		return
 	}
 
+	devicePath := strings.Split(c.Request.Host, ":")[0]
+	device, err := getDevice(devicePath)
+	if err != nil {
+		return
+	}
 
+	err = createTableItem(&DeviceStatsTable{
+		UpdateTime: stats.UpdateTime,
+		CpuUsed: stats.SystemStats.CpuUsed,
+		MemUsed: stats.SystemStats.MemUsed,
+		DeviceID: device.ID,
+	})
+	if err != nil {
+		return
+	}
+
+	var classroom *Classroom
+	for _, classroomStats := range stats.Classrooms {
+		classroom, err = getClassroom(classroomStats.ClassroomName)
+		if err != nil {
+			return
+		}
+
+		err = createTableItem(&ClassroomStatsTable{
+			UpdateTime: stats.UpdateTime,
+			PersonCount: classroomStats.PersonCount,
+			Persons: classroomStats.Persons,
+			ClassroomID: classroom.ID,
+		})
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+func sendClassroomStats(c *gin.Context) (err error) {
+	classroomName := c.Param("classroom_name")
+	classroomStatsItem, err := getClassroomStatsItem(classroomName)
+	if err != nil {
+		return
+	}
+
+	stats := SingleClassroomStats{
+		UpdateTime: classroomStatsItem.UpdateTime,
+		ClassroomStats: ClassroomStats{
+			ClassroomName: classroomName,
+			PersonCount: classroomStatsItem.PersonCount,
+			Persons: classroomStatsItem.Persons,
+		},
+	}
+
+	c.JSON(http.StatusOK, stats)
+	return
 }
