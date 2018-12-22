@@ -182,11 +182,13 @@ func sendClasses(c *gin.Context) {
 		log.Println(err)
 		c.JSON(http.StatusInternalServerError, JsonError{Error: err.Error()})
 	} else {
-		c.JSON(http.StatusOK, classes)
+
+		c.JSON(http.StatusOK, Classes{Classes: classes})
 	}
 }
 
 func updateClass(c *gin.Context) error {
+	// TODO("update class")
 	return nil
 }
 
@@ -315,4 +317,16 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 	}
 
 	return response, err
+}
+
+func updateClassroomStats(c *gin.Context) error {
+	var err error
+
+	var stats Stats
+	err = c.ShouldBindJSON(&stats)
+	if err != nil {
+		return err
+	}
+
+
 }
