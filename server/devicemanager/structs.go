@@ -30,11 +30,6 @@ type JsonError struct {
 	Error string `json:"error"`
 }
 
-type FaceCountToken struct {
-	FaceCount int `json:"face_count"`
-	FaceSetToken string `json:"faceset_token"`
-}
-
 type Config struct {
 	LocalPort string `json:"local_port"`
 	ApiKey string `json:"api_key"`
@@ -42,11 +37,48 @@ type Config struct {
 	DetectFaceUrl string `json:"search_face_url"`
 }
 
+type ClassResponse struct {
+	ClassID uint `json:"class_id"`
+	ClassName string `json:"class_name"`
+	FaceCount int `json:"face_count"`
+	FaceSetToken string `json:"faceset_token"`
+}
+type ClassesResponse struct {
+	Classes []ClassResponse `json:"classes"`
+}
+
+type StudentResponse struct {
+	StudentNo string `json:"student_no"`
+	FaceToken string `json:"face_token"`
+	ClassIDs []uint `json:"class_ids"`
+}
+type StudentsResponse struct {
+	Students []StudentResponse `json:"students"`
+}
+
+type CameraResponse struct {
+	CameraID uint `json:"camera_id"`
+	CamPath string `json:"cam_path"`
+	DeviceID uint `json:"device_id"`
+}
+type CamerasResponse struct {
+	Cameras []CameraResponse `json:"cameras"`
+}
+
+type ClassroomResponse struct {
+	ClassroomID uint `json:"classroom_id"`
+	ClassroomName string `json:"classroom_name"`
+	CameraID uint `json:"camera_id"`
+}
+type ClassroomsResponse struct {
+	Classrooms []ClassroomResponse `json:"classrooms"`
+}
+
 type Class struct {
-	gorm.Model `json:"-"`
-	FaceSetToken string `json:"faceset_tokem"`
+	gorm.Model
+	FaceSetToken string
 	ClassName *string `gorm:"unique;not null" json:"class_name"`
-	Students []*Student `gorm:"many2many:student_class;" json:"-"`
+	Students []*Student `gorm:"many2many:student_class;"`
 }
 
 type Student struct {
@@ -75,11 +107,8 @@ type Classroom struct {
 	CameraID uint
 }
 
-type Classes struct {
-	Classes []Class `json:"classes"`
-}
-
 type ClassroomStats struct {
+	ClassroomID uint `json:"classroom_id"`
 	ClassroomName string `json:"classroom_name"`
 	PersonCount int `json:"person_count"`
 	Persons []DetectedData `json:"persons"`

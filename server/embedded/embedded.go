@@ -345,7 +345,8 @@ func uploadStatsRequest() error {
 		}
 		classroomStats[i].Persons = data
 		classroomStats[i].PersonCount = len(data)
-		classroomStats[i].Classroom = config.Classrooms[i].Classroom
+		classroomStats[i].ClassroomName = config.Classrooms[i].ClassroomName
+		classroomStats[i].ClassroomID = config.Classrooms[i].ClassroomID
 	}
 
 	cpuPer, err := cpu.Percent(time.Second, true)

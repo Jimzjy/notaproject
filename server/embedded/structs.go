@@ -48,12 +48,14 @@ type Config struct {
 }
 
 type Classroom struct {
-	Classroom string `json:"classroom_name"`
+	ClassroomID uint `json:"classroom_id"`
+	ClassroomName string `json:"classroom_name"`
 	CamPath string `json:"cam_path"`
 }
 
 type ClassroomStat struct {
-	Classroom string `json:"classroom_name"`
+	ClassroomID uint `json:"classroom_id"`
+	ClassroomName string `json:"classroom_name"`
 	PersonCount int `json:"person_count"`
 	Persons []DetectedData `json:"persons"`
 }

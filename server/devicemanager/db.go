@@ -37,7 +37,46 @@ func getAllClasses() ([]Class, error) {
 	return classes, nil
 }
 
-func getDevice(devicePath string) (device *Device, err error) {
+func getLastClass() (class *Class, err error) {
+	class = &Class{}
+
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Last(class)
+	return
+}
+
+func getClass(id int) (class *Class, err error) {
+	class = &Class{}
+
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.First(class, "id = ?", id)
+	return
+}
+
+func getDevice(id int) (device *Device, err error) {
+	device = &Device{}
+
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.First(device, "id = ?", id)
+	return
+}
+
+func getDeviceByPath(devicePath string) (device *Device, err error) {
 	device = &Device{}
 
 	db, err := gorm.Open("sqlite3", "test.db")
@@ -50,7 +89,7 @@ func getDevice(devicePath string) (device *Device, err error) {
 	return
 }
 
-func getClassroom(name string) (classroom *Classroom, err error) {
+func getClassroom(id int) (classroom *Classroom, err error) {
 	classroom = &Classroom{}
 
 	db, err := gorm.Open("sqlite3", "test.db")
@@ -59,11 +98,24 @@ func getClassroom(name string) (classroom *Classroom, err error) {
 	}
 	defer db.Close()
 
-	db.First(classroom, "name = ?", name)
+	db.First(classroom, "id = ?", id)
 	return
 }
 
-func getClassroomStatsItem(classroomName string) (stats *ClassroomStatsTable, err error) {
+func getStudent(studentNo string) (student *Student, err error) {
+	student = &Student{}
+
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.First(student, "student_no = ?", studentNo)
+	return
+}
+
+func getClassroomStatsItem(classroomID int) (stats *ClassroomStatsTable, err error) {
 	stats = &ClassroomStatsTable{}
 
 	db, err := gorm.Open("sqlite3", "test.db")
@@ -72,12 +124,7 @@ func getClassroomStatsItem(classroomName string) (stats *ClassroomStatsTable, er
 	}
 	defer db.Close()
 
-	classroom, err := getClassroom(classroomName)
-	if err != nil {
-		return
-	}
-
-	db.Last(stats, "classroom_id = ?", classroom.ID)
+	db.Last(stats, "classroom_id = ?", classroomID)
 	return
 }
 

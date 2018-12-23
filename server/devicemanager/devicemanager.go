@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -45,7 +46,10 @@ func setupRouter() *gin.Engine {
 		}
 	})
 	router.GET("/classes", func(c *gin.Context) {
-		sendClasses(c)
+		if err := sendClasses(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "send classes failed"})
+		}
 	})
 	router.PATCH("/classes", func(c *gin.Context) {
 		if err := updateClass(c); err != nil {
@@ -55,12 +59,6 @@ func setupRouter() *gin.Engine {
 	})
 
 	// 人脸
-	router.POST("/faces", func(c *gin.Context) {
-		if err := addFace(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "add face failed"})
-		}
-	})
 	router.POST("/detect_face", func(c *gin.Context) {
 		if err := detectFace(c); err != nil {
 			log.Println(err)
@@ -74,13 +72,13 @@ func setupRouter() *gin.Engine {
 	})
 
 	// 教室状态
-	router.POST("/classrooms", func(c *gin.Context) {
+	router.POST("/classroom_stats", func(c *gin.Context) {
 		if err := updateClassroomStats(c); err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonError{Error: "update stats error"})
 		}
 	})
-	router.GET("/classrooms", func(c *gin.Context) {
+	router.GET("/classroom_stats", func(c *gin.Context) {
 		if err := sendClassroomStats(c); err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonError{Error: "get stats error"})
@@ -95,6 +93,39 @@ func setupRouter() *gin.Engine {
 
 	})
 	router.PATCH("/devices", func(c *gin.Context) {
+		// TODO("patch device")
+	})
+
+	// 学生
+	router.POST("/students", func(c *gin.Context) {
+
+	})
+	router.GET("/students", func(c *gin.Context) {
+
+	})
+	router.PATCH("/students", func(c *gin.Context) {
+
+	})
+
+	// 摄像头
+	router.POST("/cameras", func(c *gin.Context) {
+
+	})
+	router.GET("/cameras", func(c *gin.Context) {
+
+	})
+	router.PATCH("/cameras", func(c *gin.Context) {
+
+	})
+
+	// 教室
+	router.POST("/classrooms", func(c *gin.Context) {
+
+	})
+	router.GET("/classrooms", func(c *gin.Context) {
+
+	})
+	router.PATCH("/classrooms", func(c *gin.Context) {
 
 	})
 
@@ -173,24 +204,72 @@ func createClass(c *gin.Context) error {
 		return err
 	}
 
-	var faceCountToken FaceCountToken
-	err = json.Unmarshal(body, &faceCountToken)
+	var classResponse ClassResponse
+	err = json.Unmarshal(body, &classResponse)
 	if err != nil {
 		return err
 	}
 
-	c.JSON(http.StatusOK, faceCountToken)
+	err = createTableItem(&Class{
+		FaceSetToken: classResponse.FaceSetToken,
+		ClassName: &className,
+	})
+	if err != nil {
+		return err
+	}
+
+	class, err := getLastClass()
+	if err != nil {
+		return err
+	}
+
+	classResponse.ClassName = className
+	classResponse.ClassID = class.ID
+	c.JSON(http.StatusOK, classResponse)
 	return nil
 }
 
-func sendClasses(c *gin.Context) {
-	if classes, err := getAllClasses(); err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, JsonError{Error: err.Error()})
-	} else {
+func sendClasses(c *gin.Context) (err error) {
+	classID, isNotMulti := c.GetQuery("class_id")
 
-		c.JSON(http.StatusOK, Classes{Classes: classes})
+	if !isNotMulti {
+		classes, err := getAllClasses()
+		if err != nil {
+			return
+		}
+
+		classesResp := make([]ClassResponse, len(classes))
+		for i := 0; i < len(classes); i++ {
+			classesResp[i].ClassID = classes[i].ID
+			classesResp[i].ClassName = *classes[i].ClassName
+			classesResp[i].FaceCount = len(classes[i].Students)
+			classesResp[i].FaceSetToken = classes[i].FaceSetToken
+		}
+
+		c.JSON(http.StatusOK, ClassesResponse{
+			Classes: classesResp,
+		})
+	} else {
+		var id int
+		id, err = strconv.Atoi(classID)
+		if err != nil {
+			return
+		}
+
+		class, err := getClass(id)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, ClassResponse{
+			ClassID: class.ID,
+			ClassName: *class.ClassName,
+			FaceCount: len(class.Students),
+			FaceSetToken: class.FaceSetToken,
+		})
 	}
+
+	return
 }
 
 func updateClass(c *gin.Context) error {
@@ -218,19 +297,19 @@ func addFace(c *gin.Context) error {
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf(response.Status)
 	}
-	var body []byte
-	body, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		return err
-	}
+	//var body []byte
+	//body, err = ioutil.ReadAll(response.Body)
+	//if err != nil {
+	//	return err
+	//}
 
-	var faceCountToken FaceCountToken
-	err = json.Unmarshal(body, &faceCountToken)
-	if err != nil {
-		return err
-	}
-
-	c.JSON(http.StatusOK, faceCountToken)
+	//var faceCountToken FaceCountToken
+	//err = json.Unmarshal(body, &faceCountToken)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//c.JSON(http.StatusOK, faceCountToken)
 	return nil
 }
 
@@ -333,7 +412,7 @@ func updateClassroomStats(c *gin.Context) (err error) {
 	}
 
 	devicePath := strings.Split(c.Request.Host, ":")[0]
-	device, err := getDevice(devicePath)
+	device, err := getDeviceByPath(devicePath)
 	if err != nil {
 		return
 	}
@@ -350,7 +429,7 @@ func updateClassroomStats(c *gin.Context) (err error) {
 
 	var classroom *Classroom
 	for _, classroomStats := range stats.Classrooms {
-		classroom, err = getClassroom(classroomStats.ClassroomName)
+		classroom, err = getClassroom(int(classroomStats.ClassroomID))
 		if err != nil {
 			return
 		}
@@ -370,8 +449,17 @@ func updateClassroomStats(c *gin.Context) (err error) {
 }
 
 func sendClassroomStats(c *gin.Context) (err error) {
-	classroomName := c.Param("classroom_name")
-	classroomStatsItem, err := getClassroomStatsItem(classroomName)
+	classroomID, isExist := c.GetQuery("classroom_id")
+	if isExist {
+		return fmt.Errorf("no classroom_name")
+	}
+
+	var id int
+	id, err = strconv.Atoi(classroomID)
+	if err != nil {
+		return
+	}
+	classroomStatsItem, err := getClassroomStatsItem(id)
 	if err != nil {
 		return
 	}
@@ -379,7 +467,7 @@ func sendClassroomStats(c *gin.Context) (err error) {
 	stats := SingleClassroomStats{
 		UpdateTime: classroomStatsItem.UpdateTime,
 		ClassroomStats: ClassroomStats{
-			ClassroomName: classroomName,
+			ClassroomID: classroomStatsItem.ClassroomID,
 			PersonCount: classroomStatsItem.PersonCount,
 			Persons: classroomStatsItem.Persons,
 		},
