@@ -87,10 +87,16 @@ func setupRouter() *gin.Engine {
 
 	// 设备
 	router.POST("/devices", func(c *gin.Context) {
-
+		if err := createDevice(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "create device error"})
+		}
 	})
 	router.GET("/devices", func(c *gin.Context) {
-
+		if err := sendDevices(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "send device error"})
+		}
 	})
 	router.PATCH("/devices", func(c *gin.Context) {
 		// TODO("patch device")
@@ -98,35 +104,53 @@ func setupRouter() *gin.Engine {
 
 	// 学生
 	router.POST("/students", func(c *gin.Context) {
-
+		if err := createStudent(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "create student error"})
+		}
 	})
 	router.GET("/students", func(c *gin.Context) {
-
+		if err := sendStudents(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "send students error"})
+		}
 	})
 	router.PATCH("/students", func(c *gin.Context) {
-
+		// TODO("patch students")
 	})
 
 	// 摄像头
 	router.POST("/cameras", func(c *gin.Context) {
-
+		if err := createCamera(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "create camera error"})
+		}
 	})
 	router.GET("/cameras", func(c *gin.Context) {
-
+		if err := sendCameras(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "send cameras error"})
+		}
 	})
 	router.PATCH("/cameras", func(c *gin.Context) {
-
+		// TODO("patch cameras")
 	})
 
 	// 教室
 	router.POST("/classrooms", func(c *gin.Context) {
-
+		if err := createClassroom(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "create classroom error"})
+		}
 	})
 	router.GET("/classrooms", func(c *gin.Context) {
-
+		if err := sendClassrooms(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonError{Error: "send classrooms error"})
+		}
 	})
 	router.PATCH("/classrooms", func(c *gin.Context) {
-
+		// TODO("patch classrooms")
 	})
 
 	// 设置
@@ -210,15 +234,11 @@ func createClass(c *gin.Context) error {
 		return err
 	}
 
-	err = createTableItem(&Class{
+	class := Class{
 		FaceSetToken: classResponse.FaceSetToken,
 		ClassName: &className,
-	})
-	if err != nil {
-		return err
 	}
-
-	class, err := getLastClass()
+	err = createTableItem(&class)
 	if err != nil {
 		return err
 	}
@@ -233,7 +253,8 @@ func sendClasses(c *gin.Context) (err error) {
 	classID, isNotMulti := c.GetQuery("class_id")
 
 	if !isNotMulti {
-		classes, err := getAllClasses()
+		var classes []Class
+		classes, err = getAllClasses()
 		if err != nil {
 			return
 		}
@@ -256,9 +277,15 @@ func sendClasses(c *gin.Context) (err error) {
 			return
 		}
 
-		class, err := getClass(id)
+		var class *Class
+		class, err = getClass(id)
 		if err != nil {
 			return
+		}
+
+		studentNos := make([]string, len(class.Students))
+		for k, v := range class.Students {
+			studentNos[k] = *v.StudentNo
 		}
 
 		c.JSON(http.StatusOK, ClassResponse{
@@ -266,6 +293,7 @@ func sendClasses(c *gin.Context) (err error) {
 			ClassName: *class.ClassName,
 			FaceCount: len(class.Students),
 			FaceSetToken: class.FaceSetToken,
+			StudentNos: studentNos,
 		})
 	}
 
@@ -474,5 +502,305 @@ func sendClassroomStats(c *gin.Context) (err error) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+	return
+}
+
+func createDevice(c *gin.Context) (err error) {
+	devicePath := c.PostForm("device_path")
+	devicePort := c.PostForm("device_port")
+
+	device := Device{
+		DevicePath: devicePath,
+		DevicePort: devicePort,
+	}
+	err = createTableItem(&device)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, DeviceResponse{
+		DeviceID: device.ID,
+		DevicePath: devicePath,
+		DevicePort: devicePort,
+	})
+	return
+}
+
+func sendDevices(c *gin.Context) (err error) {
+	deviceID, isNotMulti := c.GetQuery("device_id")
+
+	if !isNotMulti {
+		var devices []Device
+		devices, err = getAllDevices()
+		if err != nil {
+			return
+		}
+
+		devicesResponse := make([]DeviceResponse, len(devices))
+		for i := 0; i < len(devicesResponse); i++ {
+			devicesResponse[i].DeviceID = devices[i].ID
+			devicesResponse[i].DevicePath = devices[i].DevicePath
+			devicesResponse[i].DevicePort = devices[i].DevicePort
+		}
+		c.JSON(http.StatusOK, DevicesResponse{Devices: devicesResponse})
+	} else {
+		var id int
+		id, err = strconv.Atoi(deviceID)
+		if err != nil {
+			return
+		}
+
+		var device *Device
+		device, err = getDevice(id)
+
+		c.JSON(http.StatusOK, device)
+	}
+	return
+}
+
+func createStudent(c *gin.Context) (err error) {
+	studentNo := c.PostForm("student_no")
+	faceToken := c.PostForm("face_token")
+	classIDs := c.PostFormArray("[]class_ids")
+
+	var ids []int
+	ids, err = stringArrayToIntArray(classIDs)
+	if err != nil {
+		return
+	}
+
+	classes, err := getClasses(ids)
+	if err != nil {
+		return
+	}
+
+	classPointers := make([]*Class, len(classes))
+	for k, v := range classes {
+		classPointers[k] = &v
+	}
+	student := Student{
+		StudentNo: &studentNo,
+		FaceToken: faceToken,
+		Classes: classPointers,
+	}
+
+	err = createTableItem(&student)
+	if err != nil {
+		return
+	}
+
+	classUintIDs := make([]uint, len(classes))
+	for k, v := range classes {
+		classUintIDs[k] = v.ID
+	}
+	c.JSON(http.StatusOK, StudentResponse{
+		StudentNo: *student.StudentNo,
+		FaceToken: student.FaceToken,
+		ClassIDs: classUintIDs,
+	})
+	return
+}
+
+func sendStudents(c *gin.Context) (err error) {
+	studentNo, byStuNo := c.GetQuery("student_no")
+	classID , byClassID := c.GetQuery("class_id")
+
+	if byStuNo {
+		var student *Student
+		student, err = getStudent(studentNo)
+		if err != nil {
+			return
+		}
+
+		classUintIDs := make([]uint, len(student.Classes))
+		for k, v := range student.Classes {
+			classUintIDs[k] = v.ID
+		}
+		c.JSON(http.StatusOK, StudentResponse{
+			StudentNo: *student.StudentNo,
+			FaceToken: student.FaceToken,
+			ClassIDs: classUintIDs,
+		})
+	} else if byClassID {
+		var id int
+		id ,err = strconv.Atoi(classID)
+		if err != nil {
+			return
+		}
+
+		var students []Student
+		students, err = getStudentsByClass(id)
+		if err != nil {
+			return
+		}
+
+		studentsResponse := make([]StudentResponse, len(students))
+		for k, v := range students {
+			studentsResponse[k].FaceToken = v.FaceToken
+			studentsResponse[k].StudentNo = *v.StudentNo
+		}
+
+		c.JSON(http.StatusOK, StudentsResponse{
+			Students: studentsResponse,
+		})
+	} else {
+		err = fmt.Errorf("no param provide")
+		return
+	}
+
+	return
+}
+
+func stringArrayToIntArray(strArray []string) (intArray []int, err error) {
+	intArray = make([]int, len(strArray))
+
+	for i := 0; i < len(intArray); i++ {
+		intArray[i], err = strconv.Atoi(strArray[i])
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func createCamera(c *gin.Context) (err error) {
+	camPath := c.PostForm("cam_path")
+	deviceID := c.PostForm("device_id")
+
+	var id int
+	id ,err = strconv.Atoi(deviceID)
+	if err != nil {
+		return
+	}
+
+	camera := Camera{
+		CamPath: camPath,
+		DeviceID: uint(id),
+	}
+
+	err = createTableItem(&camera)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, CameraResponse{
+		CameraID: camera.ID,
+		DeviceID: camera.DeviceID,
+		CamPath: camera.CamPath,
+	})
+	return
+}
+
+func sendCameras(c *gin.Context) (err error) {
+	cameraID, isNotMulti := c.GetQuery("camera_id")
+
+	if !isNotMulti {
+		var cameras []Camera
+
+		cameras, err = getCameras()
+		if err != nil {
+			return
+		}
+
+		camerasResponse := make([]CameraResponse, len(cameras))
+		for k, v := range cameras {
+			camerasResponse[k].CamPath = v.CamPath
+			camerasResponse[k].CameraID = v.ID
+			camerasResponse[k].DeviceID = v.DeviceID
+		}
+
+		c.JSON(http.StatusOK, CamerasResponse{
+			Cameras: camerasResponse,
+		})
+	} else {
+		var camera *Camera
+
+		var id int
+		id ,err = strconv.Atoi(cameraID)
+		if err != nil {
+			return
+		}
+		camera, err = getCamera(id)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, CameraResponse{
+			CameraID: camera.ID,
+			CamPath: camera.CamPath,
+			DeviceID: camera.DeviceID,
+		})
+	}
+	return
+}
+
+func createClassroom(c *gin.Context) (err error) {
+	classroomName := c.PostForm("classroom_name")
+	cameraID := c.PostForm("camera_id")
+
+	var id int
+	id ,err = strconv.Atoi(cameraID)
+	if err != nil {
+		return
+	}
+
+	classroom := Classroom{
+		Name: classroomName,
+		CameraID: uint(id),
+	}
+
+	err = createTableItem(&classroom)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, ClassroomResponse{
+		ClassroomID: classroom.ID,
+		ClassroomName: classroom.Name,
+		CameraID: classroom.CameraID,
+	})
+	return
+}
+
+func sendClassrooms(c *gin.Context) (err error) {
+	classroomID, isNotMulti := c.GetQuery("classroom_id")
+
+	if !isNotMulti {
+		var classrooms []Classroom
+
+		classrooms, err = getClassrooms()
+		if err != nil {
+			return
+		}
+
+		classroomsResponse := make([]ClassroomResponse, len(classrooms))
+		for k, v := range classrooms {
+			classroomsResponse[k].CameraID = v.CameraID
+			classroomsResponse[k].ClassroomName = v.Name
+			classroomsResponse[k].ClassroomID = v.ID
+		}
+
+		c.JSON(http.StatusOK, ClassroomsResponse{
+			Classrooms: classroomsResponse,
+		})
+	} else {
+		var classroom *Classroom
+
+		var id int
+		id ,err = strconv.Atoi(classroomID)
+		if err != nil {
+			return
+		}
+		classroom, err = getClassroom(id)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, ClassroomResponse{
+			ClassroomID: classroom.ID,
+			CameraID: classroom.ID,
+			ClassroomName: classroom.Name,
+		})
+	}
 	return
 }

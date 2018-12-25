@@ -37,18 +37,18 @@ func getAllClasses() ([]Class, error) {
 	return classes, nil
 }
 
-func getLastClass() (class *Class, err error) {
-	class = &Class{}
-
-	db, err := gorm.Open("sqlite3", "test.db")
-	if err != nil {
-		return
-	}
-	defer db.Close()
-
-	db.Last(class)
-	return
-}
+//func getLastClass() (class *Class, err error) {
+//	class = &Class{}
+//
+//	db, err := gorm.Open("sqlite3", "test.db")
+//	if err != nil {
+//		return
+//	}
+//	defer db.Close()
+//
+//	db.Last(class)
+//	return
+//}
 
 func getClass(id int) (class *Class, err error) {
 	class = &Class{}
@@ -62,6 +62,31 @@ func getClass(id int) (class *Class, err error) {
 	db.First(class, "id = ?", id)
 	return
 }
+
+func getClasses(ids []int) (classes []Class, err error) {
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Find(&classes, "id in (?)", ids)
+	return
+}
+
+func getAllDevices() (devices []Device, err error) {
+	devices = []Device{}
+
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	db.Find(&devices)
+	return
+}
+
 
 func getDevice(id int) (device *Device, err error) {
 	device = &Device{}
@@ -115,6 +140,20 @@ func getStudent(studentNo string) (student *Student, err error) {
 	return
 }
 
+func getStudentsByClass(classID int) (students []Student, err error) {
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	var class Class
+	db.First(&class, "id = ?", classID)
+
+	db.Model(&class).Related(&students, "Students")
+	return
+}
+
 func getClassroomStatsItem(classroomID int) (stats *ClassroomStatsTable, err error) {
 	stats = &ClassroomStatsTable{}
 
@@ -125,6 +164,41 @@ func getClassroomStatsItem(classroomID int) (stats *ClassroomStatsTable, err err
 	defer db.Close()
 
 	db.Last(stats, "classroom_id = ?", classroomID)
+	return
+}
+
+func getCamera(cameraID int) (camera *Camera, err error) {
+	camera = &Camera{}
+
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.First(camera, "id = ?", cameraID)
+	return
+}
+
+func getCameras() (cameras []Camera, err error) {
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Find(&cameras)
+	return
+}
+
+func getClassrooms() (classrooms []Classroom, err error) {
+	db, err := gorm.Open("sqlite3", "test.db")
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Find(&classrooms)
 	return
 }
 

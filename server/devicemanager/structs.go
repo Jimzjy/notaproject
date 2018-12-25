@@ -37,11 +37,21 @@ type Config struct {
 	DetectFaceUrl string `json:"search_face_url"`
 }
 
+type DeviceResponse struct {
+	DeviceID uint `json:"device_id"`
+	DevicePath string `json:"device_path"`
+	DevicePort string `json:"device_port"`
+}
+type DevicesResponse struct {
+	Devices []DeviceResponse `json:"devices"`
+}
+
 type ClassResponse struct {
 	ClassID uint `json:"class_id"`
 	ClassName string `json:"class_name"`
 	FaceCount int `json:"face_count"`
 	FaceSetToken string `json:"faceset_token"`
+	StudentNos []string `json:"student_nos"`
 }
 type ClassesResponse struct {
 	Classes []ClassResponse `json:"classes"`
