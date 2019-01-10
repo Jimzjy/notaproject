@@ -1,0 +1,6 @@
+{
+  "local_port": ":8000",
+  "api_key": "n_yPwzYJ98wYIw-dTa0szeI8-Dm5Eoud",
+  "api_secret": "6xyoca4TrZ0MU7SfnZyeo4Sv5e5Z29RZ",
+  "detect_face_url": "https://api-cn.faceplusplus.com/facepp/v3/detect"
+}

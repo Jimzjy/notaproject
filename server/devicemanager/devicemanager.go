@@ -2,10 +2,13 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	"io/ioutil"
 	"log"
 	"mime/multipart"
@@ -14,23 +17,34 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 )
 
-const ConfigFileName = "config.json"
+const (
+	ConfigFileName = "config.json"
+	UpdateStatsTime = 30
+	ImageFileDir = "images/"
+)
 
 var config Config
 
 func main() {
 	var err error
 
-	getConfig(&config)
+	err = getConfig(&config)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
+	go updateStats()
+
 	router := setupRouter()
-	router.Run(config.LocalPort)
+	err = router.Run(config.LocalPort)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 }
 
 func setupRouter() *gin.Engine {
@@ -42,19 +56,19 @@ func setupRouter() *gin.Engine {
 	router.POST("/classes", func(c *gin.Context) {
 		if err := createClass(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "create class failed"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "create class failed"})
 		}
 	})
 	router.GET("/classes", func(c *gin.Context) {
 		if err := sendClasses(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "send classes failed"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send classes failed"})
 		}
 	})
 	router.PATCH("/classes", func(c *gin.Context) {
 		if err := updateClass(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "update class failed"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "update class failed"})
 		}
 	})
 
@@ -62,7 +76,7 @@ func setupRouter() *gin.Engine {
 	router.POST("/detect_face", func(c *gin.Context) {
 		if err := detectFace(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "detect face failed"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "detect face failed"})
 		}
 	})
 
@@ -75,13 +89,13 @@ func setupRouter() *gin.Engine {
 	router.POST("/classroom_stats", func(c *gin.Context) {
 		if err := updateClassroomStats(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "update stats error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "update stats error"})
 		}
 	})
 	router.GET("/classroom_stats", func(c *gin.Context) {
 		if err := sendClassroomStats(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "get stats error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "get stats error"})
 		}
 	})
 
@@ -89,13 +103,13 @@ func setupRouter() *gin.Engine {
 	router.POST("/devices", func(c *gin.Context) {
 		if err := createDevice(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "create device error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "create device error"})
 		}
 	})
 	router.GET("/devices", func(c *gin.Context) {
 		if err := sendDevices(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "send device error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send device error"})
 		}
 	})
 	router.PATCH("/devices", func(c *gin.Context) {
@@ -106,30 +120,39 @@ func setupRouter() *gin.Engine {
 	router.POST("/students", func(c *gin.Context) {
 		if err := createStudent(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "create student error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "create student error"})
 		}
 	})
 	router.GET("/students", func(c *gin.Context) {
 		if err := sendStudents(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "send students error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send students error"})
 		}
 	})
-	router.PATCH("/students", func(c *gin.Context) {
-		// TODO("patch students")
+	router.PATCH("/students/:no", func(c *gin.Context) {
+		if err := updateStudent(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "update student error"})
+		}
+	})
+	router.DELETE("/students", func(c *gin.Context) {
+		if err := deleteStudent(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "delete students error"})
+		}
 	})
 
 	// 摄像头
 	router.POST("/cameras", func(c *gin.Context) {
 		if err := createCamera(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "create camera error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "create camera error"})
 		}
 	})
 	router.GET("/cameras", func(c *gin.Context) {
 		if err := sendCameras(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "send cameras error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send cameras error"})
 		}
 	})
 	router.PATCH("/cameras", func(c *gin.Context) {
@@ -140,13 +163,13 @@ func setupRouter() *gin.Engine {
 	router.POST("/classrooms", func(c *gin.Context) {
 		if err := createClassroom(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "create classroom error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "create classroom error"})
 		}
 	})
 	router.GET("/classrooms", func(c *gin.Context) {
 		if err := sendClassrooms(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "send classrooms error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send classrooms error"})
 		}
 	})
 	router.PATCH("/classrooms", func(c *gin.Context) {
@@ -159,7 +182,43 @@ func setupRouter() *gin.Engine {
 	})
 	router.POST("/config", func(c *gin.Context) {
 		if err := setConfig(c); err != nil {
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "can not set config"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "can not set config"})
+		}
+	})
+
+	// 管理员
+	router.POST("/admin/login", func(c *gin.Context) {
+		if err := adminLogin(c); err != nil {
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "user login error"})
+		}
+	})
+	router.GET("/admin", func(c *gin.Context) {
+		if err := sendAdminInfo(c); err != nil {
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send userInfo error"})
+		}
+	})
+	router.GET("/admin/logout", func(c *gin.Context) {
+		if err := adminLogout(c); err != nil {
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "user logout error"})
+		}
+	})
+
+	// 仪表盘
+	router.GET("/dashboard", func(c *gin.Context) {
+		if err := sendDashBoard(c); err != nil {
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send dashboard error"})
+		}
+	})
+
+	// 图片
+	router.GET("/images/:name", func(c *gin.Context) {
+		if err := sendImage(c); err != nil {
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send image error"})
+		}
+	})
+	router.POST("/images", func(c *gin.Context) {
+		if err := saveImage(c); err != nil {
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "save image error"})
 		}
 	})
 
@@ -208,6 +267,7 @@ func createClass(c *gin.Context) error {
 	var err error
 
 	className := c.PostForm("class_name")
+	classImage := c.PostForm("class_image")
 
 	response, err := http.PostForm(config.DetectFaceUrl, url.Values{
 		"api_key": {config.ApiKey},
@@ -237,6 +297,7 @@ func createClass(c *gin.Context) error {
 	class := Class{
 		FaceSetToken: classResponse.FaceSetToken,
 		ClassName: &className,
+		ClassImage: classImage,
 	}
 	err = createTableItem(&class)
 	if err != nil {
@@ -560,7 +621,9 @@ func sendDevices(c *gin.Context) (err error) {
 
 func createStudent(c *gin.Context) (err error) {
 	studentNo := c.PostForm("student_no")
-	faceToken := c.PostForm("face_token")
+	studentImage := c.PostForm("student_image")
+	studentName := c.PostForm("student_name")
+	studentPassword := c.PostForm("student_password")
 	classIDs := c.PostFormArray("[]class_ids")
 
 	var ids []int
@@ -580,8 +643,10 @@ func createStudent(c *gin.Context) (err error) {
 	}
 	student := Student{
 		StudentNo: &studentNo,
-		FaceToken: faceToken,
 		Classes: classPointers,
+		StudentImage: studentImage,
+		StudentName: studentName,
+		StudentPassword: fmt.Sprintf("%x", sha256.Sum256([]byte(studentPassword))),
 	}
 
 	err = createTableItem(&student)
@@ -597,6 +662,9 @@ func createStudent(c *gin.Context) (err error) {
 		StudentNo: *student.StudentNo,
 		FaceToken: student.FaceToken,
 		ClassIDs: classUintIDs,
+		StudentName: student.StudentName,
+		StudentImage: student.StudentImage,
+		StudentPassword: studentPassword,
 	})
 	return
 }
@@ -604,6 +672,9 @@ func createStudent(c *gin.Context) (err error) {
 func sendStudents(c *gin.Context) (err error) {
 	studentNo, byStuNo := c.GetQuery("student_no")
 	classID , byClassID := c.GetQuery("class_id")
+
+	page := c.Query("page")
+	pageSize := c.Query("pageSize")
 
 	if byStuNo {
 		var student *Student
@@ -616,10 +687,16 @@ func sendStudents(c *gin.Context) (err error) {
 		for k, v := range student.Classes {
 			classUintIDs[k] = v.ID
 		}
-		c.JSON(http.StatusOK, StudentResponse{
-			StudentNo: *student.StudentNo,
-			FaceToken: student.FaceToken,
-			ClassIDs: classUintIDs,
+		c.JSON(http.StatusOK, StudentsResponse{
+			Students: []StudentResponse{{
+				StudentNo: *student.StudentNo,
+				FaceToken: student.FaceToken,
+				ClassIDs: classUintIDs,
+				StudentName: student.StudentName,
+				StudentImage: student.StudentImage,
+				StudentPassword: student.StudentPassword,
+			}},
+			Total: 1,
 		})
 	} else if byClassID {
 		var id int
@@ -634,18 +711,177 @@ func sendStudents(c *gin.Context) (err error) {
 			return
 		}
 
+		pageCount := len(students)
+		if page != "" && pageSize != "" {
+			start, _ := strconv.Atoi(page)
+			size, _ := strconv.Atoi(pageSize)
+
+			if (len(students) - start * size) > size {
+				students = students[(start - 1) * size: start * size]
+			} else {
+				students = students[(start - 1) * size:]
+			}
+		}
+
 		studentsResponse := make([]StudentResponse, len(students))
 		for k, v := range students {
 			studentsResponse[k].FaceToken = v.FaceToken
 			studentsResponse[k].StudentNo = *v.StudentNo
+			studentsResponse[k].StudentImage = v.StudentImage
+			studentsResponse[k].StudentName = v.StudentName
+			studentsResponse[k].StudentPassword = v.StudentPassword
+
+			classUintIDs := make([]uint, len(v.Classes))
+			for k, v := range v.Classes {
+				classUintIDs[k] = v.ID
+			}
+			studentsResponse[k].ClassIDs = classUintIDs
 		}
 
 		c.JSON(http.StatusOK, StudentsResponse{
 			Students: studentsResponse,
+			Total: pageCount,
 		})
 	} else {
-		err = fmt.Errorf("no param provide")
+		var students []Student
+		students, err = getAllStudents()
+		if err != nil {
+			return
+		}
+
+		pageCount := len(students)
+		if page != "" && pageSize != "" {
+			start, _ := strconv.Atoi(page)
+			size, _ := strconv.Atoi(pageSize)
+
+			if (len(students) - start * size) > size {
+				students = students[(start - 1) * size: start * size]
+			} else {
+				students = students[(start - 1) * size:]
+			}
+		}
+
+		studentsResponse := make([]StudentResponse, len(students))
+		for k, v := range students {
+			studentsResponse[k].FaceToken = v.FaceToken
+			studentsResponse[k].StudentNo = *v.StudentNo
+			studentsResponse[k].StudentImage = v.StudentImage
+			studentsResponse[k].StudentName = v.StudentName
+			studentsResponse[k].StudentPassword = v.StudentPassword
+
+			classUintIDs := make([]uint, len(v.Classes))
+			for k, v := range v.Classes {
+				classUintIDs[k] = v.ID
+			}
+			studentsResponse[k].ClassIDs = classUintIDs
+		}
+
+		c.JSON(http.StatusOK, StudentsResponse{
+			Students: studentsResponse,
+			Total: pageCount,
+		})
+	}
+
+	return
+}
+
+func updateStudent(c *gin.Context) (err error) {
+	studentNo := c.Param("no")
+	studentImage := c.PostForm("student_image")
+	studentName := c.PostForm("student_name")
+	studentPassword := c.PostForm("student_password")
+	classIDs := c.PostFormArray("[]class_ids")
+
+	oldStudent, err := getStudent(studentNo)
+	if err != nil {
 		return
+	}
+
+	newStudentMap := make(map[string]interface{})
+
+	var ids []int
+	ids, err = stringArrayToIntArray(classIDs)
+	if err != nil {
+		return
+	}
+	classes, err := getClasses(ids)
+	if err != nil {
+		return
+	}
+	classPointers := make([]*Class, len(classes))
+	for k, v := range classes {
+		classPointers[k] = &v
+	}
+	classUintIDs := make([]uint, len(classes))
+	for k, v := range classes {
+		classUintIDs[k] = v.ID
+	}
+	newStudentMap["classes"] = classPointers
+
+	if studentImage != oldStudent.StudentImage {
+		newStudentMap["student_image"] = studentImage
+	}
+	if studentName != oldStudent.StudentName {
+		newStudentMap["student_name"] = studentName
+	}
+	newPassword := fmt.Sprintf("%x", sha256.Sum256([]byte(studentPassword)))
+	if newPassword != oldStudent.StudentPassword {
+		newStudentMap["student_password"] = newPassword
+	}
+
+	err = updateTableItem(&oldStudent, newStudentMap)
+	if err != nil {
+		return
+	}
+
+	newStudent, err := getStudent(studentNo)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, StudentResponse{
+		StudentNo: *newStudent.StudentNo,
+		FaceToken: newStudent.FaceToken,
+		ClassIDs: classUintIDs,
+		StudentName: newStudent.StudentName,
+		StudentImage: newStudent.StudentImage,
+		StudentPassword: studentPassword,
+	})
+	return
+}
+
+func deleteStudent(c *gin.Context) (err error) {
+	studentNo := c.PostForm("student_no")
+	studentNos := c.PostFormArray("student_nos")
+
+	if studentNo != "" {
+		var student *Student
+		student, err = getStudent(studentNo)
+		if err != nil {
+			return
+		}
+
+		err = deleteTableItem(&student)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, JsonMessage{Message: "student deleted"})
+	} else {
+		for _, v := range studentNos {
+			var student *Student
+			student, err = getStudent(v)
+			if err != nil {
+				return
+			}
+
+			err = deleteTableItem(&student)
+			if err != nil {
+				return
+			}
+
+			c.JSON(http.StatusOK, JsonMessage{Message: "students deleted"})
+		}
 	}
 
 	return
@@ -802,5 +1038,128 @@ func sendClassrooms(c *gin.Context) (err error) {
 			ClassroomName: classroom.Name,
 		})
 	}
+	return
+}
+
+func adminLogin(c *gin.Context) (err error) {
+	username := c.PostForm("username")
+	password := c.PostForm("password")
+
+	if username == password && (username == Admin || username == Developer) {
+		c.SetCookie("admin_token", username, 36000, "/", "localhost", false, true)
+	} else {
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "Auth failed"})
+		return
+	}
+
+	return
+}
+
+func sendAdminInfo(c *gin.Context) (err error) {
+	cookie, err := c.Cookie("admin_token")
+	if err != nil {
+		c.JSON(http.StatusOK, JsonMessage{Message: "Not Login"})
+		return nil
+	}
+
+	c.JSON(http.StatusOK, UserInfoResp{
+		User: UserInfo{Username: cookie, Permissions: cookie},
+	})
+
+	return
+}
+
+func adminLogout(c *gin.Context) (err error) {
+	c.SetCookie("admin_token", "", -1, "/", "localhost", false, true)
+	return
+}
+
+func sendDashBoard(c *gin.Context) (err error) {
+	systemStats, err := getDeviceManagerSystemStats()
+	if err != nil {
+		return
+	}
+
+	cameras, devices, err := getDeviceCameraCount()
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, DashBoardResp{
+		SystemStats: systemStats,
+		NumberCard: NumberCard{cameras, devices},
+	})
+
+	return
+}
+
+func updateStats() {
+	ticker := time.NewTicker(time.Duration(UpdateStatsTime * 1000000000))
+	var err error
+
+	for range ticker.C {
+		err = updateCpuMemStats()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func updateCpuMemStats() (err error) {
+	cpuUsed, err := cpu.Percent(time.Second, false)
+	if err != nil {
+		return
+	}
+	memStats, err := mem.VirtualMemory()
+	if err != nil {
+		return
+	}
+	memUsed := (float64(memStats.Active) / float64(memStats.Total)) * 100
+
+	systemStats := DeviceManagerSystemStats{
+		CpuUsed: getFloatPrecision(cpuUsed[0], "1"),
+		MemUsed: getFloatPrecision(memUsed, "1"),
+	}
+
+	err = createTableItem(&systemStats)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func getFloatPrecision(number float64, p string) float64 {
+	format := "%." + p + "f"
+
+	numberStr := fmt.Sprintf(format, number)
+
+	numberP, err := strconv.ParseFloat(numberStr, 64)
+	if err != nil {
+		return 0
+	}
+
+	return numberP
+}
+
+func saveImage(c *gin.Context) (err error) {
+	file, _ := c.FormFile("file")
+
+	fileName := fmt.Sprintf("%v%v", time.Now().UnixNano(), path.Ext(file.Filename))
+
+	err = c.SaveUploadedFile(file, ImageFileDir + fileName)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: fileName})
+	return
+}
+
+func sendImage(c *gin.Context) (err error) {
+	imageName := c.Param("name")
+
+	c.File(ImageFileDir + imageName)
+
 	return
 }

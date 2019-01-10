@@ -28,8 +28,8 @@ type SearchFaceResults struct {
 	Results []SearchFaceResult `json:"results"`
 }
 
-type JsonError struct {
-	Error string `json:"error"`
+type JsonMessage struct {
+	Message string `json:"message"`
 }
 
 type PersonDataFaces struct {
@@ -61,8 +61,8 @@ type ClassroomStat struct {
 }
 
 type SystemStats struct {
-	CpuUsed string `json:"cpu_used"`
-	MemUsed string `json:"mem_used"`
+	CpuUsed float64 `json:"cpu_used"`
+	MemUsed float64 `json:"mem_used"`
 }
 
 type Stats struct {

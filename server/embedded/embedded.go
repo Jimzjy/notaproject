@@ -16,6 +16,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"reflect"
+	"strconv"
 	"time"
 	"unsafe"
 )
@@ -64,7 +65,7 @@ func setupRouter() *gin.Engine {
 	router.POST("/config", func(c *gin.Context) {
 		if err := setConfig(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonError{Error: "set config failed"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "set config failed"})
 		}
 	})
 
@@ -119,7 +120,7 @@ func searchFace(c *gin.Context) {
 	personData, err := getSearchData(camPath, faceSetToken)
 	if err != nil {
 		log.Println(err)
-		c.JSON(http.StatusInternalServerError, JsonError{Error: "can not get person data"})
+		c.JSON(http.StatusInternalServerError, JsonMessage{Message: "can not get person data"})
 		return
 	}
 
@@ -349,16 +350,21 @@ func uploadStatsRequest() error {
 		classroomStats[i].ClassroomID = config.Classrooms[i].ClassroomID
 	}
 
-	cpuPer, err := cpu.Percent(time.Second, true)
+	cpuUsed, err := cpu.Percent(time.Second, false)
 	if err != nil {
 		return err
 	}
 	memStats, err := mem.VirtualMemory()
+	if err != nil {
+		return err
+	}
 	stats := Stats{
 		UpdateTime: time.Now(),
 		Stats: SystemStats{
-			CpuUsed: arrayToString(cpuPer),
-			MemUsed: fmt.Sprintf("%v %v", memStats.Total, memStats.Active),
+			CpuUsed: getFloatPrecision(cpuUsed[0], "1"),
+			MemUsed: getFloatPrecision(
+				(float64(memStats.Active) / float64(memStats.Total)) * 100,
+				"1"),
 		},
 		Classrooms: classroomStats,
 	}
@@ -401,4 +407,17 @@ func arrayToString(v interface{}) string {
 	}
 
 	return tmp
+}
+
+func getFloatPrecision(number float64, p string) float64 {
+	format := "%." + p + "f"
+
+	numberStr := fmt.Sprintf(format, number)
+
+	numberP, err := strconv.ParseFloat(numberStr, 64)
+	if err != nil {
+		return 0
+	}
+
+	return numberP
 }

@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+const (
+	Admin = "admin"
+	Developer = "developer"
+)
+
 type FaceRectTokens struct {
 	Faces []FaceRectToken `json:"faces"`
 }
@@ -26,8 +31,8 @@ type FaceNoToken struct {
 	StudentNo string `json:"student_no"`
 }
 
-type JsonError struct {
-	Error string `json:"error"`
+type JsonMessage struct {
+	Message string `json:"message"`
 }
 
 type Config struct {
@@ -59,11 +64,15 @@ type ClassesResponse struct {
 
 type StudentResponse struct {
 	StudentNo string `json:"student_no"`
+	StudentName string `json:"student_name"`
 	FaceToken string `json:"face_token"`
+	StudentImage string `json:"student_image"`
+	StudentPassword string `json:"student_password"`
 	ClassIDs []uint `json:"class_ids"`
 }
 type StudentsResponse struct {
 	Students []StudentResponse `json:"students"`
+	Total int `json:"total"`
 }
 
 type CameraResponse struct {
@@ -88,12 +97,16 @@ type Class struct {
 	gorm.Model
 	FaceSetToken string
 	ClassName *string `gorm:"unique;not null" json:"class_name"`
+	ClassImage string
 	Students []*Student `gorm:"many2many:student_class;"`
 }
 
 type Student struct {
 	gorm.Model
 	StudentNo *string `gorm:"unique;not null"`
+	StudentName string
+	StudentImage string
+	StudentPassword string
 	FaceToken string
 	Classes []*Class `gorm:"many2many:student_class;"`
 }
@@ -125,8 +138,8 @@ type ClassroomStats struct {
 }
 
 type SystemStats struct {
-	CpuUsed string `json:"cpu_used"`
-	MemUsed string `json:"mem_used"`
+	CpuUsed float64 `json:"cpu_used"`
+	MemUsed float64 `json:"mem_used"`
 }
 
 type Stats struct {
@@ -145,8 +158,8 @@ type DetectedData struct {
 type DeviceStatsTable struct {
 	gorm.Model
 	UpdateTime time.Time
-	CpuUsed string
-	MemUsed string
+	CpuUsed float64
+	MemUsed float64
 	DeviceID uint
 }
 
@@ -158,7 +171,32 @@ type ClassroomStatsTable struct {
 	ClassroomID uint
 }
 
+type DeviceManagerSystemStats struct {
+	gorm.Model
+	CpuUsed float64 `json:"cpu_used"`
+	MemUsed float64 `json:"mem_used"`
+}
+
 type SingleClassroomStats struct {
 	UpdateTime time.Time `json:"update_time"`
 	ClassroomStats ClassroomStats `json:"classroom_stats"`
+}
+
+type UserInfo struct {
+	Username string `json:"username"`
+	Permissions string `json:"permissions"`
+}
+
+type UserInfoResp struct {
+	User UserInfo `json:"user"`
+}
+
+type NumberCard struct {
+	Devices int `json:"devices"`
+	Cameras int `json:"cameras"`
+}
+
+type DashBoardResp struct {
+	SystemStats []DeviceManagerSystemStats `json:"system_stats"`
+	NumberCard NumberCard `json:"number_card"`
 }

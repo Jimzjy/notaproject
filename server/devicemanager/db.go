@@ -3,10 +3,17 @@ package main
 import (
 	"github.com/jinzhu/gorm"
 	"log"
+
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
+)
+
+const (
+	DBName  = "deviceManager.db"
+	DB = "sqlite3"
 )
 
 func init() {
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		log.Println("failed to connect database")
 		return
@@ -20,12 +27,13 @@ func init() {
 	db.AutoMigrate(&Classroom{})
 	db.AutoMigrate(&DeviceStatsTable{})
 	db.AutoMigrate(&ClassroomStatsTable{})
+	db.AutoMigrate(&DeviceManagerSystemStats{})
 }
 
 func getAllClasses() ([]Class, error) {
 	var err error
 
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +48,7 @@ func getAllClasses() ([]Class, error) {
 //func getLastClass() (class *Class, err error) {
 //	class = &Class{}
 //
-//	db, err := gorm.Open("sqlite3", "test.db")
+//	db, err := gorm.Open(DB, DBName)
 //	if err != nil {
 //		return
 //	}
@@ -53,7 +61,7 @@ func getAllClasses() ([]Class, error) {
 func getClass(id int) (class *Class, err error) {
 	class = &Class{}
 
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -64,7 +72,7 @@ func getClass(id int) (class *Class, err error) {
 }
 
 func getClasses(ids []int) (classes []Class, err error) {
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -77,7 +85,7 @@ func getClasses(ids []int) (classes []Class, err error) {
 func getAllDevices() (devices []Device, err error) {
 	devices = []Device{}
 
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +99,7 @@ func getAllDevices() (devices []Device, err error) {
 func getDevice(id int) (device *Device, err error) {
 	device = &Device{}
 
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -104,7 +112,7 @@ func getDevice(id int) (device *Device, err error) {
 func getDeviceByPath(devicePath string) (device *Device, err error) {
 	device = &Device{}
 
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -117,7 +125,7 @@ func getDeviceByPath(devicePath string) (device *Device, err error) {
 func getClassroom(id int) (classroom *Classroom, err error) {
 	classroom = &Classroom{}
 
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -130,7 +138,7 @@ func getClassroom(id int) (classroom *Classroom, err error) {
 func getStudent(studentNo string) (student *Student, err error) {
 	student = &Student{}
 
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -141,7 +149,7 @@ func getStudent(studentNo string) (student *Student, err error) {
 }
 
 func getStudentsByClass(classID int) (students []Student, err error) {
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -150,14 +158,25 @@ func getStudentsByClass(classID int) (students []Student, err error) {
 	var class Class
 	db.First(&class, "id = ?", classID)
 
-	db.Model(&class).Related(&students, "Students")
+	db.Model(&class).Related(&students, DBName)
+	return
+}
+
+func getAllStudents() (students []Student, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Order("created_at desc").Find(&students)
 	return
 }
 
 func getClassroomStatsItem(classroomID int) (stats *ClassroomStatsTable, err error) {
 	stats = &ClassroomStatsTable{}
 
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -170,7 +189,7 @@ func getClassroomStatsItem(classroomID int) (stats *ClassroomStatsTable, err err
 func getCamera(cameraID int) (camera *Camera, err error) {
 	camera = &Camera{}
 
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -181,7 +200,7 @@ func getCamera(cameraID int) (camera *Camera, err error) {
 }
 
 func getCameras() (cameras []Camera, err error) {
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -192,7 +211,7 @@ func getCameras() (cameras []Camera, err error) {
 }
 
 func getClassrooms() (classrooms []Classroom, err error) {
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
@@ -202,8 +221,42 @@ func getClassrooms() (classrooms []Classroom, err error) {
 	return
 }
 
+func getDeviceManagerSystemStats() (systemStats []DeviceManagerSystemStats, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Order("created_at desc").Limit(10).Find(&systemStats)
+	return
+}
+
+func getDeviceCameraCount() (devices int, cameras int, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Table("devices").Count(&devices)
+	db.Table("cameras").Count(&cameras)
+	return
+}
+
+func getTableCount(tableName string) (count int, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Table(tableName).Count(&count)
+	return
+}
+
 func createTableItem(v interface{}) error {
-	db, err := gorm.Open("sqlite3", "test.db")
+	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return err
 	}
@@ -212,4 +265,26 @@ func createTableItem(v interface{}) error {
 	db.Create(v)
 
 	return nil
+}
+
+func updateTableItem(old interface{}, new map[string]interface{}) (err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Model(old).Update(new)
+	return
+}
+
+func deleteTableItem(v interface{}) (err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Unscoped().Delete(v)
+	return
 }
