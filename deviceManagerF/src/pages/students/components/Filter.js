@@ -1,7 +1,7 @@
 /* global document */
 import React, { PureComponent } from 'react'
 import PropTypes from 'prop-types'
-import { Form, Button, Row, Col, DatePicker, Input } from 'antd'
+import { Form, Button, Row, Col, Input } from 'antd'
 
 const { Search } = Input
 
@@ -58,12 +58,12 @@ class Filter extends PureComponent {
   render() {
     const { onAdd, filter, form } = this.props
     const { getFieldDecorator } = form
-    const { studentNo, classNo } = filter
+    const { student_no, class_id } = filter
 
     return (
       <Row gutter={24}>
         <Col {...ColProps} xl={{ span: 4 }} md={{ span: 8 }}>
-          {getFieldDecorator('student_no', { initialValue: studentNo })(
+          {getFieldDecorator('student_no', { initialValue: student_no })(
             <Search
               placeholder={'搜索学号'}
               onSearch={this.handleSubmit}
@@ -71,7 +71,7 @@ class Filter extends PureComponent {
           )}
         </Col>
         <Col {...ColProps} xl={{ span: 4 }} md={{ span: 8 }}>
-          {getFieldDecorator('class_id', { initialValue: classNo })(
+          {getFieldDecorator('class_id', { initialValue: class_id })(
             <Search
               placeholder={'搜索班级号'}
               onSearch={this.handleSubmit}

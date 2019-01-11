@@ -1,7 +1,6 @@
 import React, { PureComponent } from 'react'
 import PropTypes from 'prop-types'
 import { Form, Input, Modal } from 'antd'
-import Selects from './Selects'
 import PicturesWall from './PicturesWall'
 
 const FormItem = Form.Item
@@ -16,7 +15,7 @@ const formItemLayout = {
 }
 
 @Form.create()
-class UserModal extends PureComponent {
+class StudentModal extends PureComponent {
   handleOk = () => {
     const { item = {}, onOk, form } = this.props
     const { validateFields, getFieldsValue } = form
@@ -27,7 +26,6 @@ class UserModal extends PureComponent {
       }
       const data = {
         ...getFieldsValue(),
-        key: item.key,
       }
       onOk(data)
     })
@@ -67,12 +65,6 @@ class UserModal extends PureComponent {
               ],
             })(<Input />)}
           </FormItem>
-          {/* <FormItem label={`班级`} hasFeedback {...formItemLayout}>
-            {getFieldDecorator('class_ids', {
-              initialValue: item.class_ids,
-              valuePropName: "classIds",
-            })(<Selects totalClasses={item.totalClasses || []}/>)}
-          </FormItem> */}
           <FormItem label={`头像图片`} hasFeedback {...formItemLayout}>
             {getFieldDecorator('student_image', {
               initialValue: item.student_image,
@@ -85,9 +77,9 @@ class UserModal extends PureComponent {
   }
 }
 
-UserModal.propTypes = {
+StudentModal.propTypes = {
   item: PropTypes.object,
   onOk: PropTypes.func,
 }
 
-export default UserModal
+export default StudentModal

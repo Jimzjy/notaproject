@@ -42,6 +42,8 @@ type Config struct {
 	DetectFaceUrl string `json:"detect_face_url"`
 	CreateFaceSetUrl string `json:"create_face_set_url"`
 	DeleteFaceSetUrl string `json:"delete_face_set_url"`
+	AddFaceUrl string `json:"add_face_url"`
+	DeleteFaceUrl string `json:"delete_face_url"`
 }
 
 type DeviceResponse struct {
@@ -60,6 +62,7 @@ type ClassResponse struct {
 	FaceCount int `json:"face_count"`
 	FaceSetToken string `json:"faceset_token"`
 	StudentNos []string `json:"student_nos"`
+	TeacherNos []string `json:"teacher_nos"`
 }
 type ClassesResponse struct {
 	Classes []ClassResponse `json:"classes"`
@@ -118,9 +121,9 @@ type Student struct {
 
 type Teacher struct {
 	gorm.Model
-	StudentNo *string `gorm:"unique;not null"`
-	TeacherName string `json:"teacher_name"`
-	TeacherImage string `json:"teacher_image"`
+	TeacherNo *string `gorm:"unique;not null"`
+	TeacherName string
+	TeacherImage string
 	TeacherPassword string
 	Classes []*Class `gorm:"many2many:teacher_class;"`
 }
@@ -215,16 +218,44 @@ type DashBoardResp struct {
 	NumberCard NumberCard `json:"number_card"`
 }
 
-func newClassesResponse(classes []Class) (classesResp *ClassesResponse) {
+type UpdateFaceResp struct {
+	FaceAdded int `json:"face_added"`
+	FaceRemoved int `json:"face_removed"`
+}
+
+func newClassesResponse(classes []Class) (classesResp *ClassesResponse, err error) {
 	classesResp = &ClassesResponse{}
 
 	_classesResp := make([]ClassResponse, len(classes))
 	for i := 0; i < len(classes); i++ {
 		_classesResp[i].ClassID = classes[i].ID
 		_classesResp[i].ClassName = classes[i].ClassName
-		_classesResp[i].FaceCount = len(classes[i].Students)
 		_classesResp[i].FaceSetToken = classes[i].FaceSetToken
 		_classesResp[i].ClassImage = classes[i].ClassImage
+
+		var students []Student
+		students, err = getStudentsByClass(int(classes[i].ID))
+		if err != nil {
+			return
+		}
+		studentNos := make([]string, len(students))
+		for k, v := range students {
+			studentNos[k] = *v.StudentNo
+		}
+
+		var teachers []Teacher
+		teachers, err = getTeachersByClass(int(classes[i].ID))
+		if err != nil {
+			return
+		}
+		teacherNos := make([]string, len(teachers))
+		for k, v := range teachers {
+			teacherNos[k] = *v.TeacherNo
+		}
+
+		_classesResp[i].StudentNos = studentNos
+		_classesResp[i].TeacherNos = teacherNos
+		_classesResp[i].FaceCount = len(students)
 	}
 
 	classesResp.Classes = _classesResp
@@ -232,7 +263,7 @@ func newClassesResponse(classes []Class) (classesResp *ClassesResponse) {
 	return
 }
 
-func newStudentsResponse(students []Student) (studentsResp *StudentsResponse) {
+func newStudentsResponse(students []Student) (studentsResp *StudentsResponse, err error) {
 	studentsResp = &StudentsResponse{}
 
 	studentsResponse := make([]StudentResponse, len(students))
@@ -243,8 +274,13 @@ func newStudentsResponse(students []Student) (studentsResp *StudentsResponse) {
 		studentsResponse[k].StudentName = v.StudentName
 		studentsResponse[k].StudentPassword = v.StudentPassword
 
-		classUintIDs := make([]uint, len(v.Classes))
-		for k, v := range v.Classes {
+		var classes []Class
+		classes, err = getClassesByStudentNo(*v.StudentNo)
+		if err != nil {
+			return
+		}
+		classUintIDs := make([]uint, len(classes))
+		for k, v := range classes {
 			classUintIDs[k] = v.ID
 		}
 		studentsResponse[k].ClassIDs = classUintIDs

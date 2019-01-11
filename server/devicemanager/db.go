@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"github.com/jinzhu/gorm"
 	"log"
+	"reflect"
 
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
@@ -104,7 +106,7 @@ func getClassesByStudentNo(studentNo string) (classes []Class, err error) {
 	var student Student
 	db.First(&student, "student_no = ?", studentNo)
 
-	db.Model(&student).Related(&classes, "Students")
+	db.Model(&student).Related(&classes, "Classes")
 	return
 }
 
@@ -118,7 +120,7 @@ func getClassesByTeacherNo(teacherNo string) (classes []Class, err error) {
 	var teacher Teacher
 	db.First(&teacher, "teacher_no = ?", teacherNo)
 
-	db.Model(&teacher).Related(&classes, "Teachers")
+	db.Model(&teacher).Related(&classes, "Classes")
 	return
 }
 
@@ -198,7 +200,7 @@ func getStudentsByClass(classID int) (students []Student, err error) {
 	var class Class
 	db.First(&class, "id = ?", classID)
 
-	db.Model(&class).Related(&students, "Classes")
+	db.Model(&class).Related(&students, "Students")
 	return
 }
 
@@ -232,6 +234,20 @@ func getTeachers(teachersNos []string) (teachers []Teacher, err error) {
 	defer db.Close()
 
 	db.Find(&teachers, "teacher_no in (?)", teachersNos)
+	return
+}
+
+func getTeachersByClass(classID int) (teachers []Teacher, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	var class Class
+	db.First(&class, "id = ?", classID)
+
+	db.Model(&class).Related(&teachers, "Teachers")
 	return
 }
 
@@ -329,7 +345,7 @@ func createTableItem(v interface{}) error {
 	return nil
 }
 
-func updateTableItem(old interface{}, new map[string]interface{}) (err error) {
+func updateTableItem(old, new interface{}) (err error) {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
@@ -359,5 +375,30 @@ func deleteTableItems(v interface{}, formatString string, value interface{}) (er
 	defer db.Close()
 
 	db.Unscoped().Where(formatString, value).Delete(v)
+	return
+}
+
+func updateAssociation(value interface{}, foreignKey string, replace interface{}) (err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	_replace := reflect.ValueOf(replace)
+	if _replace.Kind() != reflect.Slice {
+		err = errors.New("not slice")
+		return
+	}
+
+	replaceSlice := make([]interface{}, _replace.Len())
+	for i := 0; i < _replace.Len(); i++ {
+		replaceSlice[i] = _replace.Index(i).Interface()
+	}
+
+	db.Model(value).Association(foreignKey).Clear()
+	for _, v := range replaceSlice {
+		db.Model(value).Association(foreignKey).Append(v)
+	}
 	return
 }

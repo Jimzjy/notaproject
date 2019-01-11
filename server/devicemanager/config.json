@@ -4,5 +4,7 @@
   "api_secret": "6xyoca4TrZ0MU7SfnZyeo4Sv5e5Z29RZ",
   "detect_face_url": "https://api-cn.faceplusplus.com/facepp/v3/detect",
   "create_face_set_url": "https://api-cn.faceplusplus.com/facepp/v3/faceset/create",
-  "delete_face_set_url": "https://api-cn.faceplusplus.com/facepp/v3/faceset/delete"
+  "delete_face_set_url": "https://api-cn.faceplusplus.com/facepp/v3/faceset/delete",
+  "add_face_url": "https://api-cn.faceplusplus.com/facepp/v3/faceset/addface",
+  "delete_face_url": "https://api-cn.faceplusplus.com/facepp/v3/faceset/removeface"
 }

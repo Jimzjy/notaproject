@@ -10,6 +10,7 @@ import (
 	"github.com/shirou/gopsutil/mem"
 	"io/ioutil"
 	"log"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -68,26 +69,13 @@ func setConfig(c *gin.Context) error {
 func createClass(c *gin.Context) (err error) {
 	className := c.PostForm("class_name")
 	classImage := c.PostForm("class_image")
-	teacherNos := c.PostFormArray("teacher_Nos")
+	teacherNos := c.PostFormArray("teacher_nos")
 
-	response, err := http.PostForm(config.CreateFaceSetUrl, url.Values{
+	body, err := sendPostForm(url.Values{
 		"api_key": {config.ApiKey},
 		"api_secret": {config.ApiSecret},
 		"display_name": {className},
-	})
-	if err != nil {
-		return
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf(response.Status)
-	}
-	var body []byte
-	body, err = ioutil.ReadAll(response.Body)
-	if err != nil {
-		return
-	}
+	}, config.CreateFaceSetUrl)
 
 	var classResponse ClassResponse
 	err = json.Unmarshal(body, &classResponse)
@@ -102,6 +90,9 @@ func createClass(c *gin.Context) (err error) {
 
 	teacherPointers := make([]*Teacher, len(teachers))
 	for k, v := range teachers {
+		if v.ID == 0 {
+			continue
+		}
 		teacherPointers[k] = &v
 	}
 
@@ -142,19 +133,35 @@ func sendClasses(c *gin.Context) (err error) {
 			return
 		}
 
-		studentNos := make([]string, len(class.Students))
-		for k, v := range class.Students {
+		var students []Student
+		students, err = getStudentsByClass(id)
+		if err != nil {
+			return
+		}
+		studentNos := make([]string, len(students))
+		for k, v := range students {
 			studentNos[k] = *v.StudentNo
+		}
+
+		var teachers []Teacher
+		teachers, err = getTeachersByClass(id)
+		if err != nil {
+			return
+		}
+		teacherNos := make([]string, len(teachers))
+		for k, v := range teachers {
+			teacherNos[k] = *v.TeacherNo
 		}
 
 		c.JSON(http.StatusOK, ClassesResponse{
 			Classes: []ClassResponse{{
 				ClassID: class.ID,
 				ClassName: class.ClassName,
-				FaceCount: len(class.Students),
+				FaceCount: len(students),
 				FaceSetToken: class.FaceSetToken,
 				ClassImage: class.ClassImage,
 				StudentNos: studentNos,
+				TeacherNos: teacherNos,
 			}},
 			Total: 1,
 		})
@@ -165,7 +172,8 @@ func sendClasses(c *gin.Context) (err error) {
 			return
 		}
 
-		classesResp := newClassesResponse(classes)
+		var classesResp *ClassesResponse
+		classesResp, err = newClassesResponse(classes)
 
 		c.JSON(http.StatusOK, classesResp)
 	} else if byStudentNo {
@@ -176,7 +184,8 @@ func sendClasses(c *gin.Context) (err error) {
 			return
 		}
 
-		classesResp := newClassesResponse(classes)
+		var classesResp *ClassesResponse
+		classesResp, err = newClassesResponse(classes)
 
 		c.JSON(http.StatusOK, classesResp)
 	} else if byTeacherNo {
@@ -187,7 +196,8 @@ func sendClasses(c *gin.Context) (err error) {
 			return
 		}
 
-		classesResp := newClassesResponse(classes)
+		var classesResp *ClassesResponse
+		classesResp, err = newClassesResponse(classes)
 
 		c.JSON(http.StatusOK, classesResp)
 	} else {
@@ -197,7 +207,8 @@ func sendClasses(c *gin.Context) (err error) {
 			return
 		}
 
-		classesResp := newClassesResponse(classes)
+		var classesResp *ClassesResponse
+		classesResp, err = newClassesResponse(classes)
 
 		c.JSON(http.StatusOK, classesResp)
 	}
@@ -209,6 +220,8 @@ func updateClass(c *gin.Context) (err error) {
 	classID := c.PostForm("class_id")
 	className := c.PostForm("class_name")
 	classImage := c.PostForm("class_image")
+	studentNos := c.PostFormArray("student_nos")
+	teacherNos := c.PostFormArray("teacher_nos")
 
 	var id int
 	id, err = strconv.Atoi(classID)
@@ -221,19 +234,40 @@ func updateClass(c *gin.Context) (err error) {
 		return
 	}
 
-	newClassMap := make(map[string]interface{})
-
+	var newClass Class
 	if oldClass.ClassImage != classImage {
-		newClassMap["class_image"] = classImage
+		newClass.ClassImage = classImage
 	}
 	if oldClass.ClassName != className {
-		newClassMap["class_name"] = className
+		newClass.ClassName = className
 	}
 
-	err = updateTableItem(oldClass, newClassMap)
+	err = updateTableItem(oldClass, newClass)
 	if err != nil {
 		return
 	}
+
+	newStudents, err := updateFaceSetByStudentNos(oldClass.Students, studentNos, oldClass.FaceSetToken)
+	if err != nil {
+		return
+	}
+	err = updateAssociation(oldClass, "Students", newStudents)
+	if err != nil {
+		return
+	}
+
+	teachers, err := getTeachers(teacherNos)
+	if err != nil {
+		return
+	}
+	teacherPointers := make([]*Teacher, len(teachers))
+	for k, v := range teachers {
+		if v.ID == 0 {
+			continue
+		}
+		teacherPointers[k] = &v
+	}
+	err = updateAssociation(oldClass, "Teachers", teacherPointers)
 
 	c.JSON(http.StatusOK, JsonMessage{Message: "update class successful"})
 	return
@@ -252,7 +286,24 @@ func deleteClass(c *gin.Context) (err error) {
 
 		var class *Class
 		class, err = getClass(id)
+		if err != nil {
+			return
+		}
+
+		_, err = sendPostForm(url.Values{
+			"api_key": {config.ApiKey},
+			"api_secret": {config.ApiSecret},
+			"faceset_token": {class.FaceSetToken},
+			"check_empty": {"0"},
+		}, config.DeleteFaceSetUrl)
+		if err != nil {
+			return
+		}
+
 		err = deleteTableItem(class)
+		if err != nil {
+			return
+		}
 	} else if len(classIDs) > 0 {
 		for _, v := range classIDs {
 			var id int
@@ -263,7 +314,24 @@ func deleteClass(c *gin.Context) (err error) {
 
 			var class *Class
 			class, err = getClass(id)
+			if err != nil {
+				return
+			}
+
+			_, err = sendPostForm(url.Values{
+				"api_key": {config.ApiKey},
+				"api_secret": {config.ApiSecret},
+				"faceset_token": {class.FaceSetToken},
+				"check_empty": {"0"},
+			}, config.DeleteFaceSetUrl)
+			if err != nil {
+				return
+			}
+
 			err = deleteTableItem(class)
+			if err != nil {
+				return
+			}
 		}
 	} else {
 		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no params provide"})
@@ -272,42 +340,6 @@ func deleteClass(c *gin.Context) (err error) {
 
 	c.JSON(http.StatusOK, JsonMessage{Message: "delete class successful"})
 	return
-}
-
-func addFace(c *gin.Context) error {
-	var err error
-
-	faceToken := c.PostForm("face_token")
-	faceSetToken := c.PostForm("faceset_token")
-
-	response, err := http.PostForm(config.DetectFaceUrl, url.Values{
-		"api_key": {config.ApiKey},
-		"api_secret": {config.ApiSecret},
-		"faceset_token": {faceSetToken},
-		"face_token": {faceToken},
-	})
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf(response.Status)
-	}
-	//var body []byte
-	//body, err = ioutil.ReadAll(response.Body)
-	//if err != nil {
-	//	return err
-	//}
-
-	//var faceCountToken FaceCountToken
-	//err = json.Unmarshal(body, &faceCountToken)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//c.JSON(http.StatusOK, faceCountToken)
-	return nil
 }
 
 func detectFace(c *gin.Context) error {
@@ -331,16 +363,8 @@ func detectFace(c *gin.Context) error {
 		"api_key": config.ApiKey,
 		"api_secret": config.ApiSecret,
 	}
-	response, err := fileUploadRequest(config.DetectFaceUrl, params,
+	body, err := fileUploadRequest(config.DetectFaceUrl, params,
 		"image_file", data, fileHeader.Filename)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf(response.Status)
-	}
-	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}
@@ -512,12 +536,39 @@ func createStudent(c *gin.Context) (err error) {
 	//for k, v := range classes {
 	//	classPointers[k] = &v
 	//}
+
+	data, err := ioutil.ReadFile(fmt.Sprintf("images/%v", studentImage))
+	if err != nil {
+		return
+	}
+
+	params := map[string]string{
+		"api_key": config.ApiKey,
+		"api_secret": config.ApiSecret,
+	}
+	body, err := fileUploadRequest(config.DetectFaceUrl, params,
+		"image_file", data, studentImage)
+	if err != nil {
+		return
+	}
+
+	var faceRectTokens FaceRectTokens
+	err = json.Unmarshal(body, &faceRectTokens)
+	if err != nil {
+		return err
+	}
+	if len(faceRectTokens.Faces) < 1 {
+		c.JSON(http.StatusBadRequest, "get face from student image failed")
+		return nil
+	}
+
 	student := Student{
 		StudentNo: &studentNo,
 		//Classes: classPointers,
 		StudentImage: studentImage,
 		StudentName: studentName,
 		StudentPassword: fmt.Sprintf("%x", sha256.Sum256([]byte(studentPassword))),
+		FaceToken: faceRectTokens.Faces[0].FaceToken,
 	}
 
 	err = createTableItem(&student)
@@ -556,8 +607,13 @@ func sendStudents(c *gin.Context) (err error) {
 			return
 		}
 
-		classUintIDs := make([]uint, len(student.Classes))
-		for k, v := range student.Classes {
+		var classes []Class
+		classes, err = getClassesByStudentNo(*student.StudentNo)
+		if err != nil {
+			return
+		}
+		classUintIDs := make([]uint, len(classes))
+		for k, v := range classes {
 			classUintIDs[k] = v.ID
 		}
 		c.JSON(http.StatusOK, StudentsResponse{
@@ -595,7 +651,11 @@ func sendStudents(c *gin.Context) (err error) {
 			}
 		}
 
-		studentsResp := newStudentsResponse(students)
+		var studentsResp *StudentsResponse
+		studentsResp, err = newStudentsResponse(students)
+		if err != nil {
+			return
+		}
 
 		c.JSON(http.StatusOK, studentsResp)
 	} else {
@@ -616,7 +676,11 @@ func sendStudents(c *gin.Context) (err error) {
 			}
 		}
 
-		studentsResp := newStudentsResponse(students)
+		var studentsResp *StudentsResponse
+		studentsResp, err = newStudentsResponse(students)
+		if err != nil {
+			return
+		}
 
 		c.JSON(http.StatusOK, studentsResp)
 	}
@@ -635,8 +699,6 @@ func updateStudent(c *gin.Context) (err error) {
 	if err != nil {
 		return
 	}
-
-	newStudentMap := make(map[string]interface{})
 
 	//var ids []int
 	//ids, err = stringArrayToIntArray(classIDs)
@@ -657,21 +719,23 @@ func updateStudent(c *gin.Context) (err error) {
 	//}
 	//newStudentMap["classes"] = classPointers
 
+	var newStudent Student
+
 	if studentImage != oldStudent.StudentImage {
-		newStudentMap["student_image"] = studentImage
+		newStudent.StudentImage = studentImage
 	}
 	if studentName != oldStudent.StudentName {
-		newStudentMap["student_name"] = studentName
+		newStudent.StudentName = studentName
 	}
 
 	if len(studentPassword) > 0 {
 		newPassword := fmt.Sprintf("%x", sha256.Sum256([]byte(studentPassword)))
 		if newPassword != oldStudent.StudentPassword {
-			newStudentMap["student_password"] = newPassword
+			newStudent.StudentPassword = newPassword
 		}
 	}
 
-	err = updateTableItem(oldStudent, newStudentMap)
+	err = updateTableItem(oldStudent, newStudent)
 	if err != nil {
 		return
 	}
@@ -1033,29 +1097,28 @@ func stringArrayToIntArray(strArray []string) (intArray []int, err error) {
 	return
 }
 
-// 文件上传 Request
-// return Response
-func fileUploadRequest(url string, params map[string]string, fileParamName string, fileContent []byte, fileName string) (*http.Response, error) {
-	var err error
-
+func fileUploadRequest(url string, params map[string]string, fileParamName string, fileContent []byte, fileName string) (respBody []byte, err error) {
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
 
 	part, err := writer.CreateFormFile(fileParamName, fileName)
 	if err != nil {
-		return nil, err
+		return
 	}
-	part.Write(fileContent)
+	_, err = part.Write(fileContent)
+	if err != nil {
+		return
+	}
 
 	for key, val := range params {
 		err = writer.WriteField(key, val)
 		if err != nil {
-			return nil, err
+			return
 		}
 	}
 	err = writer.Close()
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	request, err := http.NewRequest("POST", url, body)
@@ -1064,8 +1127,144 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 	client := http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		return nil, err
+		return
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		err = fmt.Errorf(response.Status)
+		return
 	}
 
-	return response, err
+	respBody, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func checkIfInStringSlice(slice []string, value string) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
+func updateFaceSetByStudentNos(oldStudents []*Student, newStudentNos []string, faceSetToken string) (newStudents []*Student, err error) {
+	studentsAdd := ""
+	studentsDelete := ""
+	oldStudentNos := make([]string, len(oldStudents))
+
+	for k, v := range oldStudents {
+		oldStudentNos[k] = *v.StudentNo
+	}
+
+	for _, v := range oldStudents {
+		if checkIfInStringSlice(newStudentNos, *v.StudentNo) {
+			newStudents = append(newStudents, v)
+			continue
+		}
+
+		studentsDelete += fmt.Sprintf("%v,", v.FaceToken)
+	}
+
+	for _, v := range newStudentNos {
+		if !checkIfInStringSlice(oldStudentNos, v) {
+			var student *Student
+			student, err = getStudent(v)
+
+			if student.ID == 0 {
+				continue
+			}
+			studentsAdd += fmt.Sprintf("%v,", student.FaceToken)
+			newStudents = append(newStudents, student)
+		}
+	}
+
+	studentsDelete = strings.TrimSuffix(studentsDelete, ",")
+	studentsAdd = strings.TrimSuffix(studentsAdd, ",")
+
+	removeNum := 0
+	removed := 0
+	added := 0
+	addNum := 0
+
+	if len(studentsDelete) > 0 {
+		removeNum = len(strings.Split(studentsDelete, ","))
+	}
+	if len(studentsAdd) > 0 {
+		addNum = len(strings.Split(studentsAdd, ","))
+	}
+
+	var body []byte
+	var resp UpdateFaceResp
+	if removeNum > 0 {
+		body, err = sendPostForm(url.Values{
+			"api_key": {config.ApiKey},
+			"api_secret": {config.ApiSecret},
+			"faceset_token": {faceSetToken},
+			"face_tokens": {studentsDelete},
+		}, config.DeleteFaceUrl)
+		if err != nil {
+			return
+		}
+
+		err = json.Unmarshal(body, &resp)
+		if err != nil {
+			return
+		}
+
+		removed = resp.FaceRemoved
+	}
+
+	if addNum > 0 {
+		for i := 0; i < int(math.Ceil(float64(addNum) / 5)); i++ {
+			body, err = sendPostForm(url.Values{
+				"api_key": {config.ApiKey},
+				"api_secret": {config.ApiSecret},
+				"faceset_token": {faceSetToken},
+				"face_tokens": {studentsAdd},
+			}, config.AddFaceUrl)
+			if err != nil {
+				return
+			}
+
+			err = json.Unmarshal(body, &resp)
+			if err != nil {
+				return
+			}
+			added += resp.FaceAdded
+		}
+	}
+
+	if removed != removeNum || added != addNum {
+		log.Printf("%v  %v  %v  %v\n", removed, removeNum, added, addNum)
+		log.Println(studentsAdd)
+		log.Println(studentsDelete)
+		log.Println("students not completely removed or added")
+		return
+	}
+	return
+}
+
+func sendPostForm(params url.Values, url string) (body []byte, err error) {
+	response, err := http.PostForm(url, params)
+	if err != nil {
+		return
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		err = fmt.Errorf(response.Status)
+		return
+	}
+
+	body, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		return
+	}
+	return
 }
