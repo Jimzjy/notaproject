@@ -71,10 +71,13 @@ class Students extends PureComponent {
           pageSize: page.pageSize,
         })
       },
-      onDeleteItem(id) {
+      onDeleteItem(no) {
+        const index = list.indexOf(no.student_no)
+        no.index = index
+
         dispatch({
           type: 'students/delete',
-          payload: id,
+          payload: no,
         }).then(() => {
           handleRefresh({
             page:

@@ -22,6 +22,7 @@ func init() {
 
 	db.AutoMigrate(&Class{})
 	db.AutoMigrate(&Student{})
+	db.AutoMigrate(&Teacher{})
 	db.AutoMigrate(&Device{})
 	db.AutoMigrate(&Camera{})
 	db.AutoMigrate(&Classroom{})
@@ -79,6 +80,45 @@ func getClasses(ids []int) (classes []Class, err error) {
 	defer db.Close()
 
 	db.Find(&classes, "id in (?)", ids)
+	return
+}
+
+func getClassesByName(className string) (classes []Class, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Find(&classes, "class_name = ?", className)
+	return
+}
+
+func getClassesByStudentNo(studentNo string) (classes []Class, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	var student Student
+	db.First(&student, "student_no = ?", studentNo)
+
+	db.Model(&student).Related(&classes, "Students")
+	return
+}
+
+func getClassesByTeacherNo(teacherNo string) (classes []Class, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	var teacher Teacher
+	db.First(&teacher, "teacher_no = ?", teacherNo)
+
+	db.Model(&teacher).Related(&classes, "Teachers")
 	return
 }
 
@@ -158,7 +198,18 @@ func getStudentsByClass(classID int) (students []Student, err error) {
 	var class Class
 	db.First(&class, "id = ?", classID)
 
-	db.Model(&class).Related(&students, DBName)
+	db.Model(&class).Related(&students, "Classes")
+	return
+}
+
+func getStudents(studentNos []string) (students []Student, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Find(&students, "student_no in (?)", studentNos)
 	return
 }
 
@@ -170,6 +221,17 @@ func getAllStudents() (students []Student, err error) {
 	defer db.Close()
 
 	db.Order("created_at desc").Find(&students)
+	return
+}
+
+func getTeachers(teachersNos []string) (teachers []Teacher, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Find(&teachers, "teacher_no in (?)", teachersNos)
 	return
 }
 
@@ -286,5 +348,16 @@ func deleteTableItem(v interface{}) (err error) {
 	defer db.Close()
 
 	db.Unscoped().Delete(v)
+	return
+}
+
+func deleteTableItems(v interface{}, formatString string, value interface{}) (err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Unscoped().Where(formatString, value).Delete(v)
 	return
 }

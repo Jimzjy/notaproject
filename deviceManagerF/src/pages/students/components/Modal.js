@@ -60,22 +60,19 @@ class UserModal extends PureComponent {
               ],
             })(<Input disabled={ type === 'create' ? false : true } />)}
           </FormItem>
-          <FormItem label={'密码'} hasFeedback {...formItemLayout}>
+          <FormItem label={'更新密码'} hasFeedback {...formItemLayout}>
             {getFieldDecorator('student_password', {
-              initialValue: item.student_password,
               rules: [
-                {
-                  required: true,
-                },
+
               ],
             })(<Input />)}
           </FormItem>
-          <FormItem label={`班级`} hasFeedback {...formItemLayout}>
+          {/* <FormItem label={`班级`} hasFeedback {...formItemLayout}>
             {getFieldDecorator('class_ids', {
               initialValue: item.class_ids,
               valuePropName: "classIds",
             })(<Selects totalClasses={item.totalClasses || []}/>)}
-          </FormItem>
+          </FormItem> */}
           <FormItem label={`头像图片`} hasFeedback {...formItemLayout}>
             {getFieldDecorator('student_image', {
               initialValue: item.student_image,

@@ -52,13 +52,13 @@ export default modelExtend(pageModel, {
       },
 
       *delete({ payload }, { call, put, select }) {
-        const data = yield call(removeStudents, objectToFormData({student_no: payload}))
+        const data = yield call(removeStudents, objectToFormData({student_no: payload.student_no}))
         const { selectedRowKeys } = yield select(_ => _.students)
         if (data.success) {
           yield put({
             type: 'updateState',
             payload: {
-              selectedRowKeys: selectedRowKeys.filter(_ => _ !== payload),
+              selectedRowKeys: selectedRowKeys.filter(_ => _ !== payload.index),
             },
           })
         } else {
@@ -85,8 +85,9 @@ export default modelExtend(pageModel, {
       },
   
       *update({ payload }, { call, put }) {
-        const no = payload.student_no
-        const data = yield call(updateStudent, {formData: objectToFormData(payload), no})
+        // const no = payload.student_no
+        // const data = yield call(updateStudent, {formData: objectToFormData(payload), no})
+        const data = yield call(updateStudent, objectToFormData(payload))
         if (data.success) {
           yield put({ type: 'hideModal' })
         } else {

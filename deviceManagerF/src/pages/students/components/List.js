@@ -20,7 +20,7 @@ class List extends PureComponent {
       confirm({
         title: `确认删除所选学生信息?`,
         onOk() {
-          onDeleteItem(record.student_no)
+          onDeleteItem({student_no: record.student_no})
         },
       })
     }

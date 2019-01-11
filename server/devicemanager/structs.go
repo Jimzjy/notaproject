@@ -39,7 +39,9 @@ type Config struct {
 	LocalPort string `json:"local_port"`
 	ApiKey string `json:"api_key"`
 	ApiSecret string `json:"api_secret"`
-	DetectFaceUrl string `json:"search_face_url"`
+	DetectFaceUrl string `json:"detect_face_url"`
+	CreateFaceSetUrl string `json:"create_face_set_url"`
+	DeleteFaceSetUrl string `json:"delete_face_set_url"`
 }
 
 type DeviceResponse struct {
@@ -54,12 +56,14 @@ type DevicesResponse struct {
 type ClassResponse struct {
 	ClassID uint `json:"class_id"`
 	ClassName string `json:"class_name"`
+	ClassImage string `json:"class_image"`
 	FaceCount int `json:"face_count"`
 	FaceSetToken string `json:"faceset_token"`
 	StudentNos []string `json:"student_nos"`
 }
 type ClassesResponse struct {
 	Classes []ClassResponse `json:"classes"`
+	Total int `json:"total"`
 }
 
 type StudentResponse struct {
@@ -96,9 +100,10 @@ type ClassroomsResponse struct {
 type Class struct {
 	gorm.Model
 	FaceSetToken string
-	ClassName *string `gorm:"unique;not null" json:"class_name"`
+	ClassName string
 	ClassImage string
 	Students []*Student `gorm:"many2many:student_class;"`
+	Teachers []*Teacher `gorm:"many2many:teacher_class;"`
 }
 
 type Student struct {
@@ -109,6 +114,15 @@ type Student struct {
 	StudentPassword string
 	FaceToken string
 	Classes []*Class `gorm:"many2many:student_class;"`
+}
+
+type Teacher struct {
+	gorm.Model
+	StudentNo *string `gorm:"unique;not null"`
+	TeacherName string `json:"teacher_name"`
+	TeacherImage string `json:"teacher_image"`
+	TeacherPassword string
+	Classes []*Class `gorm:"many2many:teacher_class;"`
 }
 
 // DevicePort: eg.(":8000")
@@ -199,4 +213,44 @@ type NumberCard struct {
 type DashBoardResp struct {
 	SystemStats []DeviceManagerSystemStats `json:"system_stats"`
 	NumberCard NumberCard `json:"number_card"`
+}
+
+func newClassesResponse(classes []Class) (classesResp *ClassesResponse) {
+	classesResp = &ClassesResponse{}
+
+	_classesResp := make([]ClassResponse, len(classes))
+	for i := 0; i < len(classes); i++ {
+		_classesResp[i].ClassID = classes[i].ID
+		_classesResp[i].ClassName = classes[i].ClassName
+		_classesResp[i].FaceCount = len(classes[i].Students)
+		_classesResp[i].FaceSetToken = classes[i].FaceSetToken
+		_classesResp[i].ClassImage = classes[i].ClassImage
+	}
+
+	classesResp.Classes = _classesResp
+	classesResp.Total = len(_classesResp)
+	return
+}
+
+func newStudentsResponse(students []Student) (studentsResp *StudentsResponse) {
+	studentsResp = &StudentsResponse{}
+
+	studentsResponse := make([]StudentResponse, len(students))
+	for k, v := range students {
+		studentsResponse[k].FaceToken = v.FaceToken
+		studentsResponse[k].StudentNo = *v.StudentNo
+		studentsResponse[k].StudentImage = v.StudentImage
+		studentsResponse[k].StudentName = v.StudentName
+		studentsResponse[k].StudentPassword = v.StudentPassword
+
+		classUintIDs := make([]uint, len(v.Classes))
+		for k, v := range v.Classes {
+			classUintIDs[k] = v.ID
+		}
+		studentsResponse[k].ClassIDs = classUintIDs
+	}
+
+	studentsResp.Students = studentsResponse
+	studentsResp.Total = len(studentsResponse)
+	return
 }

@@ -12,7 +12,14 @@ export function objectToFormData(object) {
   let formData = new FormData()
   
   for ( let key in object ) {
-    formData.append(key, object[key]);
+    let _object = object[key]
+    if (_object instanceof Array) {
+      for (let _key in _object) {
+        formData.append(key, _object[_key])
+      }
+    } else {
+      formData.append(key, _object)
+    }
   }
   return formData
 }

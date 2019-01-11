@@ -11,7 +11,7 @@ import config from 'config'
 
 const UserPermission = {
   DEFAULT: {
-    visit: ['1', '5', '6', '51', '52', '53', '61', '62', '621'],
+    visit: ['1', '5', '6', '51', '52', '53', '511', '521', '531', '61', '62', '63', '611', '621', '631'],
     role: ROLE_TYPE.DEFAULT,
   },
   DEVELOPER: {
