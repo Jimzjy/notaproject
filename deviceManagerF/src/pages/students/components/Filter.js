@@ -59,7 +59,7 @@ class Filter extends PureComponent {
     const { onAdd, filter, form } = this.props
     const { getFieldDecorator } = form
     const { student_no, class_id } = filter
-
+    
     return (
       <Row gutter={24}>
         <Col {...ColProps} xl={{ span: 4 }} md={{ span: 8 }}>

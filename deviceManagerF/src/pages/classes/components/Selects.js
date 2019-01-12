@@ -1,4 +1,4 @@
-import { PureComponent } from "react";
+import React, { PureComponent } from "react";
 import { Select } from "antd";
 import PropTypes from 'prop-types'
 
@@ -11,7 +11,7 @@ class Selects extends PureComponent {
   render() {
     const children = [];
     for (let i = 0; i < this.props.totalIds; i++) {
-      children.push(<Option key={this.props.totalIds[i]}>{this.props.totalIds[i]}</Option>);
+      children.push(<Select.Option key={this.props.totalIds[i]}>{this.props.totalIds[i]}</Select.Option>);
     }
 
     return (

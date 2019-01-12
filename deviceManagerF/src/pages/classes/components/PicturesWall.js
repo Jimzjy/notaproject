@@ -1,5 +1,5 @@
 import { Upload, Icon, Modal } from 'antd';
-import { PureComponent } from 'react'
+import React, { PureComponent } from 'react'
 import PropTypes from 'prop-types'
 import { apiPrefix } from 'utils/config'
 

@@ -36,7 +36,7 @@ export const ROUTE_LIST = [
     name: 'Cameras',
     zhName: '摄像头',
     icon: 'video-camera',
-    route: '/user',
+    route: '/cameras',
   },
   {
     id: '53',
