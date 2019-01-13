@@ -98,7 +98,16 @@ func setupRouter() *gin.Engine {
 		}
 	})
 	router.PATCH("/devices", func(c *gin.Context) {
-		// TODO("patch device")
+		if err := updateDevices(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "update device error"})
+		}
+	})
+	router.DELETE("/devices", func(c *gin.Context) {
+		if err := deleteDevices(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "delete device error"})
+		}
 	})
 
 	// 学生
@@ -167,7 +176,16 @@ func setupRouter() *gin.Engine {
 		}
 	})
 	router.PATCH("/cameras", func(c *gin.Context) {
-		// TODO("patch cameras")
+		if err := updateCameras(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "update cameras error"})
+		}
+	})
+	router.DELETE("cameras", func(c *gin.Context) {
+		if err := deleteCameras(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "delete cameras error"})
+		}
 	})
 
 	// 教室
@@ -184,7 +202,16 @@ func setupRouter() *gin.Engine {
 		}
 	})
 	router.PATCH("/classrooms", func(c *gin.Context) {
-		// TODO("patch classrooms")
+		if err := updateClassrooms(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "update classrooms error"})
+		}
+	})
+	router.DELETE("/classrooms", func(c *gin.Context) {
+		if err := deleteClassrooms(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "delete classrooms error"})
+		}
 	})
 
 	// 设置

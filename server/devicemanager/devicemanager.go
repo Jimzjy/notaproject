@@ -120,6 +120,9 @@ func sendClasses(c *gin.Context) (err error) {
 	studentNo, byStudentNo := c.GetQuery("student_no")
 	teacherNo, byTeacherNo := c.GetQuery("teacher_no")
 
+	page := c.Query("page")
+	pageSize := c.Query("pageSize")
+
 	if byID {
 		var id int
 		id, err = strconv.Atoi(classID)
@@ -133,38 +136,10 @@ func sendClasses(c *gin.Context) (err error) {
 			return
 		}
 
-		var students []Student
-		students, err = getStudentsByClass(id)
-		if err != nil {
-			return
-		}
-		studentNos := make([]string, len(students))
-		for k, v := range students {
-			studentNos[k] = *v.StudentNo
-		}
+		var classesResp *ClassesResponse
+		classesResp, err = newClassesResponse([]Class{*class}, page, pageSize)
 
-		var teachers []Teacher
-		teachers, err = getTeachersByClass(id)
-		if err != nil {
-			return
-		}
-		teacherNos := make([]string, len(teachers))
-		for k, v := range teachers {
-			teacherNos[k] = *v.TeacherNo
-		}
-
-		c.JSON(http.StatusOK, ClassesResponse{
-			Classes: []ClassResponse{{
-				ClassID: class.ID,
-				ClassName: class.ClassName,
-				FaceCount: len(students),
-				FaceSetToken: class.FaceSetToken,
-				ClassImage: class.ClassImage,
-				StudentNos: studentNos,
-				TeacherNos: teacherNos,
-			}},
-			Total: 1,
-		})
+		c.JSON(http.StatusOK, classesResp)
 	} else if byName {
 		var classes []Class
 		classes, err = getClassesByName(classname)
@@ -173,7 +148,7 @@ func sendClasses(c *gin.Context) (err error) {
 		}
 
 		var classesResp *ClassesResponse
-		classesResp, err = newClassesResponse(classes)
+		classesResp, err = newClassesResponse(classes, page, pageSize)
 
 		c.JSON(http.StatusOK, classesResp)
 	} else if byStudentNo {
@@ -185,7 +160,7 @@ func sendClasses(c *gin.Context) (err error) {
 		}
 
 		var classesResp *ClassesResponse
-		classesResp, err = newClassesResponse(classes)
+		classesResp, err = newClassesResponse(classes, page, pageSize)
 
 		c.JSON(http.StatusOK, classesResp)
 	} else if byTeacherNo {
@@ -197,7 +172,7 @@ func sendClasses(c *gin.Context) (err error) {
 		}
 
 		var classesResp *ClassesResponse
-		classesResp, err = newClassesResponse(classes)
+		classesResp, err = newClassesResponse(classes, page, pageSize)
 
 		c.JSON(http.StatusOK, classesResp)
 	} else {
@@ -208,7 +183,7 @@ func sendClasses(c *gin.Context) (err error) {
 		}
 
 		var classesResp *ClassesResponse
-		classesResp, err = newClassesResponse(classes)
+		classesResp, err = newClassesResponse(classes, page, pageSize)
 
 		c.JSON(http.StatusOK, classesResp)
 	}
@@ -464,42 +439,49 @@ func sendClassroomStats(c *gin.Context) (err error) {
 func createDevice(c *gin.Context) (err error) {
 	devicePath := c.PostForm("device_path")
 	devicePort := c.PostForm("device_port")
+	cameraIDs := c.PostFormArray("camera_ids")
+
+	_cameraIDs, err := stringArrayToIntArray(cameraIDs)
+	cameras, err := getCameras(_cameraIDs)
+	if err != nil {
+		return
+	}
+
+	cameraPointers := make([]*Camera, len(cameras))
+	for k, v := range cameras {
+		if v.ID == 0 {
+			continue
+		}
+		cameraPointers[k] = &v
+	}
 
 	device := Device{
 		DevicePath: devicePath,
 		DevicePort: devicePort,
+		Cameras: cameraPointers,
 	}
 	err = createTableItem(&device)
 	if err != nil {
 		return
 	}
 
-	c.JSON(http.StatusOK, DeviceResponse{
-		DeviceID: device.ID,
-		DevicePath: devicePath,
-		DevicePort: devicePort,
-	})
+	//c.JSON(http.StatusOK, DeviceResponse{
+	//	DeviceID: device.ID,
+	//	DevicePath: devicePath,
+	//	DevicePort: devicePort,
+	//})
+	c.JSON(http.StatusOK, JsonMessage{Message: "create device successful"})
 	return
 }
 
 func sendDevices(c *gin.Context) (err error) {
-	deviceID, isNotMulti := c.GetQuery("device_id")
+	deviceID, byID := c.GetQuery("device_id")
+	cameraID, byCamera := c.GetQuery("camera_id")
 
-	if !isNotMulti {
-		var devices []Device
-		devices, err = getAllDevices()
-		if err != nil {
-			return
-		}
+	page := c.Query("page")
+	pageSize := c.Query("pageSize")
 
-		devicesResponse := make([]DeviceResponse, len(devices))
-		for i := 0; i < len(devicesResponse); i++ {
-			devicesResponse[i].DeviceID = devices[i].ID
-			devicesResponse[i].DevicePath = devices[i].DevicePath
-			devicesResponse[i].DevicePort = devices[i].DevicePort
-		}
-		c.JSON(http.StatusOK, DevicesResponse{Devices: devicesResponse})
-	} else {
+	if byID {
 		var id int
 		id, err = strconv.Atoi(deviceID)
 		if err != nil {
@@ -509,8 +491,131 @@ func sendDevices(c *gin.Context) (err error) {
 		var device *Device
 		device, err = getDevice(id)
 
-		c.JSON(http.StatusOK, device)
+		var devicesResponse *DevicesResponse
+		devicesResponse, err = newDevicesResponse([]Device{*device}, page, pageSize)
+		if err != nil {
+			return
+		}
+		c.JSON(http.StatusOK, devicesResponse)
+	} else if byCamera {
+		var id int
+		id, err = strconv.Atoi(cameraID)
+		if err != nil {
+			return
+		}
+
+		var devices []Device
+		devices, err = getDevicesByCamera(id)
+		if err != nil {
+			return
+		}
+
+		var devicesResponse *DevicesResponse
+		devicesResponse, err = newDevicesResponse(devices, page, pageSize)
+		if err != nil {
+			return
+		}
+		c.JSON(http.StatusOK, devicesResponse)
+	} else {
+		var devices []Device
+		devices, err = getAllDevices()
+		if err != nil {
+			return
+		}
+
+		var devicesResponse *DevicesResponse
+		devicesResponse, err = newDevicesResponse(devices, page, pageSize)
+		if err != nil {
+			return
+		}
+		c.JSON(http.StatusOK, devicesResponse)
 	}
+
+	return
+}
+
+func updateDevices(c *gin.Context) (err error) {
+	deviceID := c.PostForm("device_id")
+	devicePath := c.PostForm("device_path")
+	devicePort := c.PostForm("device_port")
+	cameraIDs := c.PostFormArray("camera_ids")
+
+	var id int
+	id, err = strconv.Atoi(deviceID)
+	if err != nil {
+		return
+	}
+
+	oldDevice, err := getDevice(id)
+	if err != nil {
+		return
+	}
+
+	var newDevice Device
+	if oldDevice.DevicePath != devicePath {
+		newDevice.DevicePath = devicePath
+	}
+	if oldDevice.DevicePort != devicePort {
+		newDevice.DevicePort = devicePort
+	}
+
+	err = updateTableItem(oldDevice, newDevice)
+	if err != nil {
+		return
+	}
+
+	_cameraIDs, err := stringArrayToIntArray(cameraIDs)
+	if err != nil {
+		return
+	}
+	newCameras, err := getCameras(_cameraIDs)
+	if err != nil {
+		return
+	}
+	err = updateAssociation(oldDevice, "Cameras", newCameras)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: "update device successful"})
+	return
+}
+
+func deleteDevices(c *gin.Context) (err error) {
+	deviceID := c.PostForm("device_id")
+	deviceIDs := c.PostFormArray("device_ids")
+
+	if deviceID != "" {
+		var id int
+		id, err = strconv.Atoi(deviceID)
+		if err != nil {
+			return
+		}
+
+		var device *Device
+		device, err = getDevice(id)
+
+		err = deleteTableItem(device)
+		if err != nil {
+			return
+		}
+	} else if len(deviceIDs) > 0 {
+		var ids []int
+		ids, err = stringArrayToIntArray(deviceIDs)
+		if err != nil {
+			return
+		}
+
+		err = deleteTableItems(Device{}, "id in (?)", ids)
+		if err != nil {
+			return
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no params provide"})
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: "delete device successful"})
 	return
 }
 
@@ -519,23 +624,6 @@ func createStudent(c *gin.Context) (err error) {
 	studentImage := c.PostForm("student_image")
 	studentName := c.PostForm("student_name")
 	studentPassword := c.PostForm("student_password")
-	//classIDs := c.PostFormArray("[]class_ids")
-
-	//var ids []int
-	//ids, err = stringArrayToIntArray(classIDs)
-	//if err != nil {
-	//	return
-	//}
-
-	//classes, err := getClasses(ids)
-	//if err != nil {
-	//	return
-	//}
-
-	//classPointers := make([]*Class, len(classes))
-	//for k, v := range classes {
-	//	classPointers[k] = &v
-	//}
 
 	data, err := ioutil.ReadFile(fmt.Sprintf("images/%v", studentImage))
 	if err != nil {
@@ -564,7 +652,6 @@ func createStudent(c *gin.Context) (err error) {
 
 	student := Student{
 		StudentNo: &studentNo,
-		//Classes: classPointers,
 		StudentImage: studentImage,
 		StudentName: studentName,
 		StudentPassword: fmt.Sprintf("%x", sha256.Sum256([]byte(studentPassword))),
@@ -576,26 +663,13 @@ func createStudent(c *gin.Context) (err error) {
 		return
 	}
 
-	//classUintIDs := make([]uint, len(classes))
-	//for k, v := range classes {
-	//	classUintIDs[k] = v.ID
-	//}
-	//c.JSON(http.StatusOK, StudentResponse{
-	//	StudentNo: *student.StudentNo,
-	//	FaceToken: student.FaceToken,
-	//	ClassIDs: classUintIDs,
-	//	StudentName: student.StudentName,
-	//	StudentImage: student.StudentImage,
-	//	StudentPassword: studentPassword,
-	//})
-
 	c.JSON(http.StatusOK, JsonMessage{Message: "create student successful"})
 	return
 }
 
 func sendStudents(c *gin.Context) (err error) {
 	studentNo, byStuNo := c.GetQuery("student_no")
-	classID , byClassID := c.GetQuery("class_id")
+	classID, byClassID := c.GetQuery("class_id")
 
 	page := c.Query("page")
 	pageSize := c.Query("pageSize")
@@ -607,26 +681,13 @@ func sendStudents(c *gin.Context) (err error) {
 			return
 		}
 
-		var classes []Class
-		classes, err = getClassesByStudentNo(*student.StudentNo)
+		var studentsResp *StudentsResponse
+		studentsResp, err = newStudentsResponse([]Student{*student}, page, pageSize)
 		if err != nil {
 			return
 		}
-		classUintIDs := make([]uint, len(classes))
-		for k, v := range classes {
-			classUintIDs[k] = v.ID
-		}
-		c.JSON(http.StatusOK, StudentsResponse{
-			Students: []StudentResponse{{
-				StudentNo: *student.StudentNo,
-				FaceToken: student.FaceToken,
-				ClassIDs: classUintIDs,
-				StudentName: student.StudentName,
-				StudentImage: student.StudentImage,
-				StudentPassword: student.StudentPassword,
-			}},
-			Total: 1,
-		})
+
+		c.JSON(http.StatusOK, studentsResp)
 	} else if byClassID {
 		var id int
 		id ,err = strconv.Atoi(classID)
@@ -640,19 +701,8 @@ func sendStudents(c *gin.Context) (err error) {
 			return
 		}
 
-		if page != "" && pageSize != "" {
-			start, _ := strconv.Atoi(page)
-			size, _ := strconv.Atoi(pageSize)
-
-			if (len(students) - start * size) > size {
-				students = students[(start - 1) * size: start * size]
-			} else {
-				students = students[(start - 1) * size:]
-			}
-		}
-
 		var studentsResp *StudentsResponse
-		studentsResp, err = newStudentsResponse(students)
+		studentsResp, err = newStudentsResponse(students, page, pageSize)
 		if err != nil {
 			return
 		}
@@ -665,19 +715,8 @@ func sendStudents(c *gin.Context) (err error) {
 			return
 		}
 
-		if page != "" && pageSize != "" {
-			start, _ := strconv.Atoi(page)
-			size, _ := strconv.Atoi(pageSize)
-
-			if (len(students) - start * size) > size {
-				students = students[(start - 1) * size: start * size]
-			} else {
-				students = students[(start - 1) * size:]
-			}
-		}
-
 		var studentsResp *StudentsResponse
-		studentsResp, err = newStudentsResponse(students)
+		studentsResp, err = newStudentsResponse(students, page, pageSize)
 		if err != nil {
 			return
 		}
@@ -693,31 +732,11 @@ func updateStudent(c *gin.Context) (err error) {
 	studentImage := c.PostForm("student_image")
 	studentName := c.PostForm("student_name")
 	studentPassword := c.PostForm("student_password")
-	//classIDs := c.PostFormArray("[]class_ids")
 
 	oldStudent, err := getStudent(studentNo)
 	if err != nil {
 		return
 	}
-
-	//var ids []int
-	//ids, err = stringArrayToIntArray(classIDs)
-	//if err != nil {
-	//	return
-	//}
-	//classes, err := getClasses(ids)
-	//if err != nil {
-	//	return
-	//}
-	//classPointers := make([]*Class, len(classes))
-	//for k, v := range classes {
-	//	classPointers[k] = &v
-	//}
-	//classUintIDs := make([]uint, len(classes))
-	//for k, v := range classes {
-	//	classUintIDs[k] = v.ID
-	//}
-	//newStudentMap["classes"] = classPointers
 
 	var newStudent Student
 
@@ -740,20 +759,6 @@ func updateStudent(c *gin.Context) (err error) {
 		return
 	}
 
-	//newStudent, err := getStudent(studentNo)
-	//if err != nil {
-	//	return
-	//}
-	//
-	//c.JSON(http.StatusOK, StudentResponse{
-	//	StudentNo: *newStudent.StudentNo,
-	//	FaceToken: newStudent.FaceToken,
-	//	ClassIDs: classUintIDs,
-	//	StudentName: newStudent.StudentName,
-	//	StudentImage: newStudent.StudentImage,
-	//	StudentPassword: studentPassword,
-	//})
-
 	c.JSON(http.StatusOK, JsonMessage{Message: "update student successful"})
 	return
 }
@@ -774,19 +779,6 @@ func deleteStudent(c *gin.Context) (err error) {
 			return
 		}
 	} else if len(studentNos) > 0 {
-		//for _, v := range studentNos {
-		//	var student *Student
-		//	student, err = getStudent(v)
-		//	if err != nil {
-		//		return
-		//	}
-		//
-		//	err = deleteTableItem(student)
-		//	if err != nil {
-		//		return
-		//	}
-		//}
-
 		err = deleteTableItems(Student{}, "student_no in (?)", studentNos)
 		if err != nil {
 			return
@@ -801,38 +793,200 @@ func deleteStudent(c *gin.Context) (err error) {
 }
 
 func createTeacher(c *gin.Context) (err error) {
-	// TODO("create teacher")
-	return
-}
+	teacherNo := c.PostForm("teacher_no")
+	teacherImage := c.PostForm("teacher_image")
+	teacherName := c.PostForm("teacher_name")
+	teacherPassword := c.PostForm("teacher_password")
 
-func sendTeachers(c *gin.Context) (err error) {
-	// TODO("send teacher")
-	return
-}
+	teacher := Teacher{
+		TeacherNo: &teacherNo,
+		TeacherImage: teacherImage,
+		TeacherName: teacherName,
+		TeacherPassword: fmt.Sprintf("%x", sha256.Sum256([]byte(teacherPassword))),
+	}
 
-func updateTeacher(c *gin.Context) (err error) {
-	// TODO("update teacher")
-	return
-}
-
-func deleteTeacher(c *gin.Context) (err error) {
-	// TODO("delete teacher")
-	return
-}
-
-func createCamera(c *gin.Context) (err error) {
-	camPath := c.PostForm("cam_path")
-	deviceID := c.PostForm("device_id")
-
-	var id int
-	id ,err = strconv.Atoi(deviceID)
+	err = createTableItem(&teacher)
 	if err != nil {
 		return
 	}
 
+	c.JSON(http.StatusOK, JsonMessage{Message: "create teacher successful"})
+	return
+}
+
+func sendTeachers(c *gin.Context) (err error) {
+	teacherNo, byNo := c.GetQuery("teacher_no")
+	classID, byClass := c.GetQuery("class_id")
+
+	page := c.Query("page")
+	pageSize := c.Query("pageSize")
+
+	if byNo {
+		var teacher *Teacher
+		teacher, err = getTeacher(teacherNo)
+		if err != nil {
+			return
+		}
+
+		var teachersResp *TeachersResponse
+		teachersResp, err = newTeacherResponse([]Teacher{*teacher}, page, pageSize)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, teachersResp)
+	} else if byClass {
+		var id int
+		id ,err = strconv.Atoi(classID)
+		if err != nil {
+			return
+		}
+
+		var teachers []Teacher
+		teachers, err = getTeachersByClass(id)
+		if err != nil {
+			return
+		}
+
+		var teachersResp *TeachersResponse
+		teachersResp, err = newTeacherResponse(teachers, page, pageSize)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, teachersResp)
+	} else {
+		var teachers []Teacher
+		teachers, err = getAllTeachers()
+		if err != nil {
+			return
+		}
+
+		var teachersResp *TeachersResponse
+		teachersResp, err = newTeacherResponse(teachers, page, pageSize)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, teachersResp)
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: "update teacher successful"})
+	return
+}
+
+func updateTeacher(c *gin.Context) (err error) {
+	teacherNo := c.PostForm("teacher_no")
+	teacherImage := c.PostForm("teacher_image")
+	teacherName := c.PostForm("teacher_name")
+	teacherPassword := c.PostForm("teacher_password")
+
+	oldTeacher, err := getTeacher(teacherNo)
+	if err != nil {
+		return
+	}
+
+	var newTeacher Teacher
+
+	newTeacher.TeacherImage = teacherImage
+	newTeacher.TeacherName = teacherName
+
+	if len(teacherPassword) > 0 {
+		newPassword := fmt.Sprintf("%x", sha256.Sum256([]byte(teacherPassword)))
+		if newPassword != oldTeacher.TeacherPassword {
+			newTeacher.TeacherPassword = newPassword
+		}
+	}
+
+	err = updateTableItem(oldTeacher, newTeacher)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: "update teacher successful"})
+	return
+}
+
+func deleteTeacher(c *gin.Context) (err error) {
+	teacherNo := c.PostForm("teacher_no")
+	teacherNos := c.PostForm("teacher_nos")
+
+	if teacherNo != "" {
+		var teacher *Teacher
+		teacher, err = getTeacher(teacherNo)
+		if err != nil {
+			return
+		}
+
+		err = deleteTableItem(teacher)
+		if err != nil {
+			return
+		}
+	} else if len(teacherNos) > 0 {
+		err = deleteTableItems(Teacher{}, "teacher_no in (?)", teacherNos)
+		if err != nil {
+			return 
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no params provide"})
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: "delete teacher successful"})
+	return
+}
+
+func createCamera(c *gin.Context) (err error) {
+	camStreamPath := c.PostForm("cam_stream_path")
+	camONVIFPath := c.PostForm("cam_onvif_path")
+	camAuthName := c.PostForm("cam_auth_name")
+	camAuthPassword := c.PostForm("cam_auth_password")
+	deviceID := c.PostForm("device_id")
+	classroomID := c.PostForm("classroom_id")
+
+	var devices []*Device
+	var classrooms []*Classroom
+	var id int
+	if deviceID != "" {
+		id ,err = strconv.Atoi(deviceID)
+		if err != nil {
+			return
+		}
+
+		var device *Device
+		device, err = getDevice(id)
+		if err != nil {
+			return
+		}
+
+		if device.ID != 0 {
+			devices = append(devices, device)
+		}
+	}
+	if classroomID != "" {
+		id ,err = strconv.Atoi(classroomID)
+		if err != nil {
+			return
+		}
+
+		var classroom *Classroom
+		classroom, err = getClassroom(id)
+		if err != nil {
+			return
+		}
+
+		if classroom.ID != 0 {
+			classrooms = append(classrooms, classroom)
+		}
+	}
+
 	camera := Camera{
-		CamPath: camPath,
-		DeviceID: uint(id),
+		CamStreamPath: camStreamPath,
+		CamONVIFPath: camONVIFPath,
+		CamAuthName: camAuthName,
+		CamAuthPassword: camAuthPassword,
+		Devices: devices,
+		Classrooms: classrooms,
 	}
 
 	err = createTableItem(&camera)
@@ -840,36 +994,19 @@ func createCamera(c *gin.Context) (err error) {
 		return
 	}
 
-	c.JSON(http.StatusOK, CameraResponse{
-		CameraID: camera.ID,
-		DeviceID: camera.DeviceID,
-		CamPath: camera.CamPath,
-	})
+	c.JSON(http.StatusOK, JsonMessage{Message: "create camera successful"})
 	return
 }
 
 func sendCameras(c *gin.Context) (err error) {
-	cameraID, isNotMulti := c.GetQuery("camera_id")
+	cameraID, byID := c.GetQuery("camera_id")
+	deviceID, byDevice := c.GetQuery("device_id")
+	classroomID, byClassroom := c.GetQuery("classroom_id")
 
-	if !isNotMulti {
-		var cameras []Camera
+	page := c.Query("page")
+	pageSize := c.Query("pageSize")
 
-		cameras, err = getCameras()
-		if err != nil {
-			return
-		}
-
-		camerasResponse := make([]CameraResponse, len(cameras))
-		for k, v := range cameras {
-			camerasResponse[k].CamPath = v.CamPath
-			camerasResponse[k].CameraID = v.ID
-			camerasResponse[k].DeviceID = v.DeviceID
-		}
-
-		c.JSON(http.StatusOK, CamerasResponse{
-			Cameras: camerasResponse,
-		})
-	} else {
+	if byID {
 		var camera *Camera
 
 		var id int
@@ -882,12 +1019,173 @@ func sendCameras(c *gin.Context) (err error) {
 			return
 		}
 
-		c.JSON(http.StatusOK, CameraResponse{
-			CameraID: camera.ID,
-			CamPath: camera.CamPath,
-			DeviceID: camera.DeviceID,
-		})
+		var camerasResponse *CamerasResponse
+		camerasResponse, err = newCamerasResponse([]Camera{*camera}, page, pageSize)
+		if err != nil {
+			return
+		}
+		c.JSON(http.StatusOK, camerasResponse)
+	} else if byDevice {
+		var cameras []Camera
+
+		var id int
+		id ,err = strconv.Atoi(deviceID)
+		if err != nil {
+			return
+		}
+		cameras, err = getCamerasByDevice(id)
+		if err != nil {
+			return
+		}
+
+		var camerasResponse *CamerasResponse
+		camerasResponse, err = newCamerasResponse(cameras, page, pageSize)
+		if err != nil {
+			return
+		}
+		c.JSON(http.StatusOK, camerasResponse)
+	} else if byClassroom {
+		var cameras []Camera
+
+		var id int
+		id ,err = strconv.Atoi(classroomID)
+		if err != nil {
+			return
+		}
+		cameras, err = getCamerasByClassroom(id)
+		if err != nil {
+			return
+		}
+
+		var camerasResponse *CamerasResponse
+		camerasResponse, err = newCamerasResponse(cameras, page, pageSize)
+		if err != nil {
+			return
+		}
+		c.JSON(http.StatusOK, camerasResponse)
+	} else {
+		var cameras []Camera
+
+		cameras, err = getAllCameras()
+		if err != nil {
+			return
+		}
+
+		var camerasResponse *CamerasResponse
+		camerasResponse, err = newCamerasResponse(cameras, page, pageSize)
+		if err != nil {
+			return
+		}
+		c.JSON(http.StatusOK, camerasResponse)
 	}
+	return
+}
+
+func updateCameras(c *gin.Context) (err error) {
+	cameraID := c.PostForm("camera_id")
+	camStreamPath := c.PostForm("cam_stream_path")
+	camONVIFPath := c.PostForm("cam_onvif_path")
+	camAuthName := c.PostForm("cam_auth_name")
+	camAuthPassword := c.PostForm("cam_auth_password")
+	deviceID := c.PostForm("device_id")
+	classroomID := c.PostForm("classroom_id")
+
+	var id int
+	id, err = strconv.Atoi(cameraID)
+	if err != nil {
+		return
+	}
+
+	oldCamera, err := getDevice(id)
+	if err != nil {
+		return
+	}
+
+	var newCamera Camera
+	newCamera.CamStreamPath = camStreamPath
+	newCamera.CamONVIFPath = camONVIFPath
+	newCamera.CamAuthName = camAuthName
+	newCamera.CamAuthPassword = camAuthPassword
+
+	err = updateTableItem(oldCamera, newCamera)
+	if err != nil {
+		return
+	}
+
+	var _deviceID, _classroomID int
+	if deviceID != "" {
+		_deviceID ,err = strconv.Atoi(deviceID)
+		if err != nil {
+			return
+		}
+	}
+	if classroomID != "" {
+		_classroomID, err = strconv.Atoi(classroomID)
+		if err != nil {
+			return
+		}
+	}
+
+	device, err := getDevice(_deviceID)
+	if err != nil {
+		return
+	}
+	classroom, err := getClassroom(_classroomID)
+	if err != nil {
+		return
+	}
+
+	err = updateAssociation(oldCamera, "Devices", []Device{*device})
+	if err != nil {
+		return
+	}
+	err = updateAssociation(oldCamera, "Classrooms", []Classroom{*classroom})
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: "update camera successful"})
+	return
+}
+
+func deleteCameras(c *gin.Context) (err error) {
+	cameraID := c.PostForm("camera_id")
+	cameraIDs := c.PostFormArray("camera_ids")
+
+	if cameraID != "" {
+		var id int
+		id ,err = strconv.Atoi(cameraID)
+		if err != nil {
+			return
+		}
+
+		var camera *Camera
+		camera, err = getCamera(id)
+		if err != nil {
+			return
+		}
+
+		err = deleteTableItem(camera)
+		if err != nil {
+			return
+		}
+	} else if len(cameraIDs) > 0 {
+		var ids []int
+		ids, err = stringArrayToIntArray(cameraIDs)
+		if err != nil {
+			return
+		}
+
+		err = deleteTableItems(Camera{}, "id in (?)", ids)
+		if err != nil {
+			return
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no params provide"})
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: "delete camera successful"})
 	return
 }
 
@@ -895,15 +1193,28 @@ func createClassroom(c *gin.Context) (err error) {
 	classroomName := c.PostForm("classroom_name")
 	cameraID := c.PostForm("camera_id")
 
-	var id int
-	id ,err = strconv.Atoi(cameraID)
-	if err != nil {
-		return
+	var cameras []*Camera
+	if cameraID != "" {
+		var id int
+		id ,err = strconv.Atoi(cameraID)
+		if err != nil {
+			return
+		}
+
+		var camera *Camera
+		camera, err = getCamera(id)
+		if err != nil {
+			return
+		}
+
+		if camera.ID != 0 {
+			cameras = append(cameras, camera)
+		}
 	}
 
 	classroom := Classroom{
 		Name: classroomName,
-		CameraID: uint(id),
+		Cameras: cameras,
 	}
 
 	err = createTableItem(&classroom)
@@ -911,40 +1222,22 @@ func createClassroom(c *gin.Context) (err error) {
 		return
 	}
 
-	c.JSON(http.StatusOK, ClassroomResponse{
-		ClassroomID: classroom.ID,
-		ClassroomName: classroom.Name,
-		CameraID: classroom.CameraID,
-	})
+	c.JSON(http.StatusOK, JsonMessage{Message: "create classroom successful"})
 	return
 }
 
 func sendClassrooms(c *gin.Context) (err error) {
-	classroomID, isNotMulti := c.GetQuery("classroom_id")
+	classroomID, byID := c.GetQuery("classroom_id")
+	cameraID, byCamera := c.GetQuery("camera_id")
 
-	if !isNotMulti {
-		var classrooms []Classroom
+	page := c.Query("page")
+	pageSize := c.Query("pageSize")
 
-		classrooms, err = getClassrooms()
-		if err != nil {
-			return
-		}
-
-		classroomsResponse := make([]ClassroomResponse, len(classrooms))
-		for k, v := range classrooms {
-			classroomsResponse[k].CameraID = v.CameraID
-			classroomsResponse[k].ClassroomName = v.Name
-			classroomsResponse[k].ClassroomID = v.ID
-		}
-
-		c.JSON(http.StatusOK, ClassroomsResponse{
-			Classrooms: classroomsResponse,
-		})
-	} else {
+	if byID {
 		var classroom *Classroom
 
 		var id int
-		id ,err = strconv.Atoi(classroomID)
+		id, err = strconv.Atoi(classroomID)
 		if err != nil {
 			return
 		}
@@ -953,12 +1246,131 @@ func sendClassrooms(c *gin.Context) (err error) {
 			return
 		}
 
-		c.JSON(http.StatusOK, ClassroomResponse{
-			ClassroomID: classroom.ID,
-			CameraID: classroom.ID,
-			ClassroomName: classroom.Name,
-		})
+		var classroomsResponse *ClassroomsResponse
+		classroomsResponse, err = newClassroomsResponse([]Classroom{*classroom}, page, pageSize)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, classroomsResponse)
+	} else if byCamera {
+		var id int
+		id, err = strconv.Atoi(cameraID)
+		if err != nil {
+			return
+		}
+
+		var classrooms []Classroom
+		classrooms, err = getClassroomsByCamera(id)
+		if err != nil {
+			return
+		}
+
+		var classroomsResponse *ClassroomsResponse
+		classroomsResponse, err = newClassroomsResponse(classrooms, page, pageSize)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, classroomsResponse)
+	} else {
+		var classrooms []Classroom
+
+		classrooms, err = getAllClassrooms()
+		if err != nil {
+			return
+		}
+
+		var classroomsResponse *ClassroomsResponse
+		classroomsResponse, err = newClassroomsResponse(classrooms, page, pageSize)
+		if err != nil {
+			return
+		}
+
+		c.JSON(http.StatusOK, classroomsResponse)
 	}
+	return
+}
+
+func updateClassrooms(c *gin.Context) (err error) {
+	classroomID := c.PostForm("classroom_id")
+	classroomName := c.PostForm("classroom_name")
+	cameraID := c.PostForm("camera_id")
+
+	var id int
+	id, err = strconv.Atoi(classroomID)
+	if err != nil {
+		return
+	}
+	oldClassroom, err := getClassroom(id)
+	if err != nil {
+		return
+	}
+
+	var newClassroom Classroom
+	newClassroom.Name = classroomName
+
+	err = updateTableItem(oldClassroom, newClassroom)
+	if err != nil {
+		return
+	}
+
+	id, err = strconv.Atoi(cameraID)
+	if err != nil {
+		return
+	}
+	camera, err := getCamera(id)
+	if err != nil {
+		return
+	}
+
+	err = updateAssociation(oldClassroom, "Cameras", []Camera{*camera})
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: "update classroom successful"})
+	return
+}
+
+func deleteClassrooms(c *gin.Context) (err error) {
+	classroomID := c.PostForm("classroom_id")
+	classroomIDs := c.PostFormArray("classroom_ids")
+
+	if classroomID != "" {
+		var id int
+		id ,err = strconv.Atoi(classroomID)
+		if err != nil {
+			return
+		}
+
+		var classroom *Classroom
+		classroom, err = getClassroom(id)
+		if err != nil {
+			return
+		}
+
+		err = deleteTableItem(classroom)
+		if err != nil {
+			return
+		}
+	} else if len(classroomIDs) > 0 {
+		var ids []int
+		ids, err = stringArrayToIntArray(classroomIDs)
+		if err != nil {
+			return
+		}
+
+		err = deleteTableItems(Classroom{}, "id in (?)", ids)
+		if err != nil {
+			return
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no params provide"})
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: "delete classroom successful"})
 	return
 }
 
@@ -1163,24 +1575,21 @@ func updateFaceSetByStudentNos(oldStudents []*Student, newStudentNos []string, f
 	}
 
 	for _, v := range oldStudents {
-		if checkIfInStringSlice(newStudentNos, *v.StudentNo) {
-			newStudents = append(newStudents, v)
-			continue
+		if !checkIfInStringSlice(newStudentNos, *v.StudentNo) {
+			studentsDelete += fmt.Sprintf("%v,", v.FaceToken)
 		}
-
-		studentsDelete += fmt.Sprintf("%v,", v.FaceToken)
 	}
 
 	for _, v := range newStudentNos {
-		if !checkIfInStringSlice(oldStudentNos, v) {
-			var student *Student
-			student, err = getStudent(v)
+		var student *Student
+		student, err = getStudent(v)
 
-			if student.ID == 0 {
-				continue
-			}
+		if student.ID == 0 {
+			continue
+		}
+		newStudents = append(newStudents, student)
+		if !checkIfInStringSlice(oldStudentNos, v) {
 			studentsAdd += fmt.Sprintf("%v,", student.FaceToken)
-			newStudents = append(newStudents, student)
 		}
 	}
 
