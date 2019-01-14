@@ -72,9 +72,6 @@ class Classes extends PureComponent {
         })
       },
       onDeleteItem(id) {
-        const index = list.indexOf(id.class_id)
-        id.index = index
-
         dispatch({
           type: 'classes/delete',
           payload: id,
@@ -130,15 +127,10 @@ class Classes extends PureComponent {
     }
 
     const handleDeleteItems = () => {
-      let ids = []
-      for (let i in selectedRowKeys) {
-        ids.push(list[i].class_id)
-      }
-
       dispatch({
         type: 'classes/multiDelete',
         payload: {
-          class_ids: ids,
+          class_ids: selectedRowKeys,
         },
       }).then(() => {
         handleRefresh({

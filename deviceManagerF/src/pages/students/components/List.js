@@ -56,7 +56,7 @@ class List extends PureComponent {
         render: class_ids => {
           return (
             <span>
-              {class_ids.map(c => <Link key={c} to={`classes/${c}`}>{c}</Link>)}
+              {class_ids.map(c => <Tag.CheckableTag checked={true} color={Color.blue} key={c} onChange={ () => router.push(`/classes/${c}`) }>{c}</Tag.CheckableTag>)}
             </span>
           )
         },

@@ -72,9 +72,6 @@ class Students extends PureComponent {
         })
       },
       onDeleteItem(no) {
-        const index = list.indexOf(no.student_no)
-        no.index = index
-
         dispatch({
           type: 'students/delete',
           payload: no,
@@ -130,15 +127,10 @@ class Students extends PureComponent {
     }
 
     const handleDeleteItems = () => {
-      let nos = []
-      for (let i in selectedRowKeys) {
-        nos.push(list[i].student_no)
-      }
-
       dispatch({
         type: 'students/multiDelete',
         payload: {
-          student_nos: nos,
+          student_nos: selectedRowKeys,
         },
       }).then(() => {
         handleRefresh({

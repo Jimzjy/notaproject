@@ -1,8 +1,7 @@
 import React, { PureComponent } from 'react'
 import PropTypes from 'prop-types'
 import { Form, Input, Modal } from 'antd'
-import Selects from './Selects'
-import PicturesWall from './PicturesWall'
+import { Selects, PicturesWall } from 'components'
 
 const FormItem = Form.Item
 

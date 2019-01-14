@@ -190,7 +190,23 @@ func getDevicesByCamera(cameraID int) (devices []Device, err error) {
 	return
 }
 
-func getClassroom(id int) (classroom *Classroom, err error) {
+func getClassroom(no string) (classroom *Classroom, err error) {
+	classroom = &Classroom{}
+
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.First(classroom, "classroom_no = ?", no)
+	if classroom.ID == 0 {
+		err = fmt.Errorf("can not find classroom for no %v", no)
+	}
+	return
+}
+
+func getClassroomByID(id int) (classroom *Classroom, err error) {
 	classroom = &Classroom{}
 
 	db, err := gorm.Open(DB, DBName)
@@ -201,7 +217,7 @@ func getClassroom(id int) (classroom *Classroom, err error) {
 
 	db.First(classroom, "id = ?", id)
 	if classroom.ID == 0 {
-		err = fmt.Errorf("can not find classroom for id %v", id)
+		err = fmt.Errorf("can not find classroom for no %v", id)
 	}
 	return
 }
@@ -392,7 +408,7 @@ func getCamerasByDevice(deviceID int) (cameras []Camera, err error) {
 	return
 }
 
-func getCamerasByClassroom(classroomID int) (cameras []Camera, err error) {
+func getCamerasByClassroom(classroomNo string) (cameras []Camera, err error) {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
@@ -400,7 +416,7 @@ func getCamerasByClassroom(classroomID int) (cameras []Camera, err error) {
 	defer db.Close()
 
 	var classroom Classroom
-	db.First(&classroom, "id = ?", classroomID)
+	db.First(&classroom, "classroom_no = ?", classroomNo)
 
 	db.Model(&classroom).Related(&cameras, "Cameras")
 	return

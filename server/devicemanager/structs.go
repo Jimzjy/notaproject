@@ -91,7 +91,7 @@ type CameraResponse struct {
 	CamONVIFPath string `json:"cam_onvif_path"`
 	CamAuthName string `json:"cam_auth_name"`
 	CamAuthPassword string `json:"cam_auth_password"`
-	ClassroomID uint `json:"classroom_id"`
+	ClassroomNo string `json:"classroom_no"`
 	DeviceID uint `json:"device_id"`
 }
 type CamerasResponse struct {
@@ -100,8 +100,7 @@ type CamerasResponse struct {
 }
 
 type ClassroomResponse struct {
-	ClassroomID uint `json:"classroom_id"`
-	ClassroomName string `json:"classroom_name"`
+	ClassroomNo string `json:"classroom_no"`
 	CameraID uint `json:"camera_id"`
 }
 type ClassroomsResponse struct {
@@ -168,7 +167,7 @@ type Camera struct {
 
 type Classroom struct {
 	gorm.Model
-	Name string
+	ClassroomNo *string `gorm:"unique;not null"`
 	Cameras []*Camera `gorm:"many2many:classroom_camera;"`
 }
 
@@ -388,7 +387,8 @@ func newDevicesResponse(devices []Device, page, pageSize string) (deviceResp *De
 		devicesResponse[i].DevicePath = devices[i].DevicePath
 		devicesResponse[i].DevicePort = devices[i].DevicePort
 
-		cameras, err := getCamerasByDevice(int(devices[i].ID))
+		var cameras []Camera
+		cameras, err = getCamerasByDevice(int(devices[i].ID))
 		if err != nil {
 			return
 		}
@@ -453,7 +453,7 @@ func newCamerasResponse(cameras []Camera, page, pageSize string) (camerasResp *C
 			return
 		}
 		if len(classrooms) > 0 && classrooms[0].ID != 0 {
-			camerasResponse[k].ClassroomID = classrooms[0].ID
+			camerasResponse[k].ClassroomNo = *classrooms[0].ClassroomNo
 		}
 	}
 
@@ -485,11 +485,10 @@ func newClassroomsResponse(classrooms []Classroom, page, pageSize string) (class
 
 	classroomsResponse := make([]ClassroomResponse, len(classrooms))
 	for k, v := range classrooms {
-		classroomsResponse[k].ClassroomName = v.Name
-		classroomsResponse[k].ClassroomID = v.ID
+		classroomsResponse[k].ClassroomNo = *v.ClassroomNo
 
 		var cameras []Camera
-		cameras, err = getCamerasByClassroom(int(v.ID))
+		cameras, err = getCamerasByClassroom(*v.ClassroomNo)
 		if err != nil {
 			return
 		}

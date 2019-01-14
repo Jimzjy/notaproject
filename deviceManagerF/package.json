@@ -107,9 +107,6 @@
     "test": "cross-env BABELRC=none umi test",
     "prettier": "prettier --write 'src/**/*.(js|less)'",
     "precommit": "lint-staged",
-    "add-locale": "lingui add-locale",
-    "extract": "lingui extract",
-    "trans": "lingui extract --clean && node ./scripts/translate.js",
-    "doc": "docsify serve docs"
+    "extract": "lingui extract"
   }
 }

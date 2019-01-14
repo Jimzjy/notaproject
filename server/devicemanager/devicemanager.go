@@ -222,7 +222,11 @@ func updateClass(c *gin.Context) (err error) {
 		return
 	}
 
-	newStudents, err := updateFaceSetByStudentNos(oldClass.Students, studentNos, oldClass.FaceSetToken)
+	oldStudents, err := getStudentsByClass(id)
+	if err != nil {
+		return
+	}
+	newStudents, err := updateFaceSetByStudentNos(oldStudents, studentNos, oldClass.FaceSetToken)
 	if err != nil {
 		return
 	}
@@ -388,7 +392,7 @@ func updateClassroomStats(c *gin.Context) (err error) {
 
 	var classroom *Classroom
 	for _, classroomStats := range stats.Classrooms {
-		classroom, err = getClassroom(int(classroomStats.ClassroomID))
+		classroom, err = getClassroomByID(int(classroomStats.ClassroomID))
 		if err != nil {
 			return
 		}
@@ -465,11 +469,6 @@ func createDevice(c *gin.Context) (err error) {
 		return
 	}
 
-	//c.JSON(http.StatusOK, DeviceResponse{
-	//	DeviceID: device.ID,
-	//	DevicePath: devicePath,
-	//	DevicePort: devicePort,
-	//})
 	c.JSON(http.StatusOK, JsonMessage{Message: "create device successful"})
 	return
 }
@@ -870,8 +869,6 @@ func sendTeachers(c *gin.Context) (err error) {
 
 		c.JSON(http.StatusOK, teachersResp)
 	}
-
-	c.JSON(http.StatusOK, JsonMessage{Message: "update teacher successful"})
 	return
 }
 
@@ -942,7 +939,7 @@ func createCamera(c *gin.Context) (err error) {
 	camAuthName := c.PostForm("cam_auth_name")
 	camAuthPassword := c.PostForm("cam_auth_password")
 	deviceID := c.PostForm("device_id")
-	classroomID := c.PostForm("classroom_id")
+	classroomNo := c.PostForm("classroom_no")
 
 	var devices []*Device
 	var classrooms []*Classroom
@@ -963,14 +960,9 @@ func createCamera(c *gin.Context) (err error) {
 			devices = append(devices, device)
 		}
 	}
-	if classroomID != "" {
-		id ,err = strconv.Atoi(classroomID)
-		if err != nil {
-			return
-		}
-
+	if classroomNo != "" {
 		var classroom *Classroom
-		classroom, err = getClassroom(id)
+		classroom, err = getClassroom(classroomNo)
 		if err != nil {
 			return
 		}
@@ -1001,7 +993,7 @@ func createCamera(c *gin.Context) (err error) {
 func sendCameras(c *gin.Context) (err error) {
 	cameraID, byID := c.GetQuery("camera_id")
 	deviceID, byDevice := c.GetQuery("device_id")
-	classroomID, byClassroom := c.GetQuery("classroom_id")
+	classroomNo, byClassroom := c.GetQuery("classroom_no")
 
 	page := c.Query("page")
 	pageSize := c.Query("pageSize")
@@ -1047,12 +1039,7 @@ func sendCameras(c *gin.Context) (err error) {
 	} else if byClassroom {
 		var cameras []Camera
 
-		var id int
-		id ,err = strconv.Atoi(classroomID)
-		if err != nil {
-			return
-		}
-		cameras, err = getCamerasByClassroom(id)
+		cameras, err = getCamerasByClassroom(classroomNo)
 		if err != nil {
 			return
 		}
@@ -1088,7 +1075,7 @@ func updateCameras(c *gin.Context) (err error) {
 	camAuthName := c.PostForm("cam_auth_name")
 	camAuthPassword := c.PostForm("cam_auth_password")
 	deviceID := c.PostForm("device_id")
-	classroomID := c.PostForm("classroom_id")
+	classroomNo := c.PostForm("classroom_no")
 
 	var id int
 	id, err = strconv.Atoi(cameraID)
@@ -1112,34 +1099,41 @@ func updateCameras(c *gin.Context) (err error) {
 		return
 	}
 
-	var _deviceID, _classroomID int
+	var devices []*Device
+	var classrooms []*Classroom
 	if deviceID != "" {
-		_deviceID ,err = strconv.Atoi(deviceID)
+		id ,err = strconv.Atoi(deviceID)
 		if err != nil {
 			return
 		}
-	}
-	if classroomID != "" {
-		_classroomID, err = strconv.Atoi(classroomID)
+
+		var device *Device
+		device, err = getDevice(id)
 		if err != nil {
 			return
 		}
+
+		if device.ID != 0 {
+			devices = append(devices, device)
+		}
+	}
+	if classroomNo != "" {
+		var classroom *Classroom
+		classroom, err = getClassroom(classroomNo)
+		if err != nil {
+			return
+		}
+
+		if classroom.ID != 0 {
+			classrooms = append(classrooms, classroom)
+		}
 	}
 
-	device, err := getDevice(_deviceID)
+	err = updateAssociation(oldCamera, "Devices", devices)
 	if err != nil {
 		return
 	}
-	classroom, err := getClassroom(_classroomID)
-	if err != nil {
-		return
-	}
-
-	err = updateAssociation(oldCamera, "Devices", []Device{*device})
-	if err != nil {
-		return
-	}
-	err = updateAssociation(oldCamera, "Classrooms", []Classroom{*classroom})
+	err = updateAssociation(oldCamera, "Classrooms", classrooms)
 	if err != nil {
 		return
 	}
@@ -1190,7 +1184,7 @@ func deleteCameras(c *gin.Context) (err error) {
 }
 
 func createClassroom(c *gin.Context) (err error) {
-	classroomName := c.PostForm("classroom_name")
+	classroomNo := c.PostForm("classroom_no")
 	cameraID := c.PostForm("camera_id")
 
 	var cameras []*Camera
@@ -1213,7 +1207,7 @@ func createClassroom(c *gin.Context) (err error) {
 	}
 
 	classroom := Classroom{
-		Name: classroomName,
+		ClassroomNo: &classroomNo,
 		Cameras: cameras,
 	}
 
@@ -1227,21 +1221,16 @@ func createClassroom(c *gin.Context) (err error) {
 }
 
 func sendClassrooms(c *gin.Context) (err error) {
-	classroomID, byID := c.GetQuery("classroom_id")
+	classroomNo, byNo := c.GetQuery("classroom_no")
 	cameraID, byCamera := c.GetQuery("camera_id")
 
 	page := c.Query("page")
 	pageSize := c.Query("pageSize")
 
-	if byID {
+	if byNo {
 		var classroom *Classroom
 
-		var id int
-		id, err = strconv.Atoi(classroomID)
-		if err != nil {
-			return
-		}
-		classroom, err = getClassroom(id)
+		classroom, err = getClassroom(classroomNo)
 		if err != nil {
 			return
 		}
@@ -1293,28 +1282,15 @@ func sendClassrooms(c *gin.Context) (err error) {
 }
 
 func updateClassrooms(c *gin.Context) (err error) {
-	classroomID := c.PostForm("classroom_id")
-	classroomName := c.PostForm("classroom_name")
+	classroomNo := c.PostForm("classroom_no")
 	cameraID := c.PostForm("camera_id")
 
+	oldClassroom, err := getClassroom(classroomNo)
+	if err != nil {
+		return
+	}
+
 	var id int
-	id, err = strconv.Atoi(classroomID)
-	if err != nil {
-		return
-	}
-	oldClassroom, err := getClassroom(id)
-	if err != nil {
-		return
-	}
-
-	var newClassroom Classroom
-	newClassroom.Name = classroomName
-
-	err = updateTableItem(oldClassroom, newClassroom)
-	if err != nil {
-		return
-	}
-
 	id, err = strconv.Atoi(cameraID)
 	if err != nil {
 		return
@@ -1334,18 +1310,12 @@ func updateClassrooms(c *gin.Context) (err error) {
 }
 
 func deleteClassrooms(c *gin.Context) (err error) {
-	classroomID := c.PostForm("classroom_id")
-	classroomIDs := c.PostFormArray("classroom_ids")
+	classroomNo := c.PostForm("classroom_no")
+	classroomNos := c.PostFormArray("classroom_nos")
 
-	if classroomID != "" {
-		var id int
-		id ,err = strconv.Atoi(classroomID)
-		if err != nil {
-			return
-		}
-
+	if classroomNo != "" {
 		var classroom *Classroom
-		classroom, err = getClassroom(id)
+		classroom, err = getClassroom(classroomNo)
 		if err != nil {
 			return
 		}
@@ -1354,14 +1324,8 @@ func deleteClassrooms(c *gin.Context) (err error) {
 		if err != nil {
 			return
 		}
-	} else if len(classroomIDs) > 0 {
-		var ids []int
-		ids, err = stringArrayToIntArray(classroomIDs)
-		if err != nil {
-			return
-		}
-
-		err = deleteTableItems(Classroom{}, "id in (?)", ids)
+	} else if len(classroomNos) > 0 {
+		err = deleteTableItems(Classroom{}, "classroom_no in (?)", classroomNos)
 		if err != nil {
 			return
 		}
@@ -1565,7 +1529,7 @@ func checkIfInStringSlice(slice []string, value string) bool {
 	return false
 }
 
-func updateFaceSetByStudentNos(oldStudents []*Student, newStudentNos []string, faceSetToken string) (newStudents []*Student, err error) {
+func updateFaceSetByStudentNos(oldStudents []Student, newStudentNos []string, faceSetToken string) (newStudents []*Student, err error) {
 	studentsAdd := ""
 	studentsDelete := ""
 	oldStudentNos := make([]string, len(oldStudents))
@@ -1650,10 +1614,9 @@ func updateFaceSetByStudentNos(oldStudents []*Student, newStudentNos []string, f
 	}
 
 	if removed != removeNum || added != addNum {
-		log.Printf("%v  %v  %v  %v\n", removed, removeNum, added, addNum)
 		log.Println(studentsAdd)
 		log.Println(studentsDelete)
-		log.Println("students not completely removed or added")
+		log.Printf("students not completely removed or added %v  %v  %v  %v\n", removed, removeNum, added, addNum)
 		return
 	}
 	return

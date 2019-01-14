@@ -58,7 +58,7 @@ export default modelExtend(pageModel, {
           yield put({
             type: 'updateState',
             payload: {
-              selectedRowKeys: selectedRowKeys.filter(_ => _ !== payload.index),
+              selectedRowKeys: selectedRowKeys.filter(_ => _ !== payload.student_no),
             },
           })
         } else {
