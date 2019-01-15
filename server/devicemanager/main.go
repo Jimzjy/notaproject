@@ -57,13 +57,13 @@ func setupRouter() *gin.Engine {
 		}
 	})
 
-	// 人脸
-	router.POST("/detect_face", func(c *gin.Context) {
-		if err := detectFace(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "detect face failed"})
-		}
-	})
+	//// 人脸
+	//router.POST("/detect_face", func(c *gin.Context) {
+	//	if err := detectFace(c); err != nil {
+	//		log.Println(err)
+	//		c.JSON(http.StatusInternalServerError, JsonMessage{Message: "detect face failed"})
+	//	}
+	//})
 
 	// 点名
 	router.POST("/face_count", func(c *gin.Context) {
@@ -80,7 +80,7 @@ func setupRouter() *gin.Engine {
 	router.GET("/classroom_stats", func(c *gin.Context) {
 		if err := sendClassroomStats(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "get stats error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send stats error"})
 		}
 	})
 

@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
@@ -33,44 +32,6 @@ const (
 )
 
 var config Config
-
-func main() {
-	var err error
-
-	getConfig(&config)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	go uploadStats()
-
-	router := setupRouter()
-	router.Run(config.LocalPort)
-}
-
-func setupRouter() *gin.Engine {
-	router := gin.Default()
-	router.Use(cors.Default())
-
-	// 人脸识别
-	router.POST("/face_search", func(c *gin.Context) {
-		searchFace(c)
-	})
-
-	// 设置
-	router.GET("/config", func(c *gin.Context) {
-		c.JSON(http.StatusOK, config)
-	})
-	router.POST("/config", func(c *gin.Context) {
-		if err := setConfig(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "set config failed"})
-		}
-	})
-
-	return router
-}
 
 // 获取设置文件信息
 func getConfig(config *Config) error {
@@ -111,27 +72,24 @@ func setConfig(c *gin.Context) error {
 }
 
 // POST /faceSearch
-func searchFace(c *gin.Context) {
-	var err error
-
-	camPath := c.PostForm("cam_path")
+func searchFace(c *gin.Context) (err error) {
+	camStreamPath := c.PostForm("cam_stream_path")
 	faceSetToken := c.PostForm("faceset_token")
 
-	personData, err := getSearchData(camPath, faceSetToken)
+	personData, err := getSearchData(camStreamPath, faceSetToken)
 	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusInternalServerError, JsonMessage{Message: "can not get person data"})
 		return
 	}
 
 	c.JSON(http.StatusOK, PersonDataFaces{Faces: personData})
+	return
 }
 
 // 获得 人脸 Rect 和 Token
-func getSearchData(camPath, faceSetToken string) ([]PersonData, error) {
+func getSearchData(camStreamPath, faceSetToken string) ([]PersonData, error) {
 	var err error
 
-	detectedImage, err := getDetectedImage(camPath, FaceDetect)
+	detectedImage, err := getDetectedImage(camStreamPath, FaceDetect)
 	if err != nil {
 		return nil, err
 	}
@@ -184,8 +142,8 @@ func getSearchData(camPath, faceSetToken string) ([]PersonData, error) {
 }
 
 // 获得当前 Mat
-func getCameraImage(camPath string, img *gocv.Mat) error {
-	webCam, err := gocv.OpenVideoCapture(camPath)
+func getCameraImage(camStreamPath string, img *gocv.Mat) error {
+	webCam, err := gocv.OpenVideoCapture(camStreamPath)
 	if err != nil {
 		return err
 	}
@@ -197,14 +155,14 @@ func getCameraImage(camPath string, img *gocv.Mat) error {
 	return nil
 }
 
-// 获得输入 camPath 中的人脸检测结果
+// 获得输入 camStreamPath 中的人脸检测结果
 // return 人脸 Rect 和 jpg
-func getDetectedImage(camPath string, mode int) ([]DetectedImage, error) {
+func getDetectedImage(camStreamPath string, mode int) ([]DetectedImage, error) {
 	var err error
 
 	img := gocv.NewMat()
 	defer img.Close()
-	err = getCameraImage(camPath, &img)
+	err = getCameraImage(camStreamPath, &img)
 	if err != nil {
 		return nil, err
 	}
@@ -239,12 +197,12 @@ func getDetectedData(img gocv.Mat, mode int) ([]DetectedData, error) {
 
 	switch mode {
 	case FaceDetect:
-		_param = "ssd_face.param"
-		_model = "ssd_face.bin"
+		_param = config.FaceDetectParam
+		_model = config.FaceDetectBin
 		break
 	case BodyDetect:
-		_param = "ssd_body.param"
-		_model = "ssd_body.bin"
+		_param = config.BodyDetectParam
+		_model = config.FaceDetectBin
 		break
 	default:
 	}
@@ -334,7 +292,7 @@ func uploadStatsRequest() error {
 	defer img.Close()
 	classroomStats := make([]ClassroomStat, len(config.Classrooms))
 	for i := 0; i < len(classroomStats); i++ {
-		err = getCameraImage(config.Classrooms[i].CamPath, &img)
+		err = getCameraImage(config.Classrooms[i].CamStreamPath, &img)
 		if err != nil {
 			return err
 		}
@@ -346,8 +304,7 @@ func uploadStatsRequest() error {
 		}
 		classroomStats[i].Persons = data
 		classroomStats[i].PersonCount = len(data)
-		classroomStats[i].ClassroomName = config.Classrooms[i].ClassroomName
-		classroomStats[i].ClassroomID = config.Classrooms[i].ClassroomID
+		classroomStats[i].ClassroomNo = config.Classrooms[i].ClassroomNo
 	}
 
 	cpuUsed, err := cpu.Percent(time.Second, false)

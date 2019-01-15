@@ -321,51 +321,51 @@ func deleteClass(c *gin.Context) (err error) {
 	return
 }
 
-func detectFace(c *gin.Context) error {
-	var err error
-
-	fileHeader, err := c.FormFile("image_file")
-	if err != nil {
-		return err
-	}
-	src, err := fileHeader.Open()
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-	data, err := ioutil.ReadAll(src)
-	if err != nil {
-		return err
-	}
-
-	params := map[string]string{
-		"api_key": config.ApiKey,
-		"api_secret": config.ApiSecret,
-	}
-	body, err := fileUploadRequest(config.DetectFaceUrl, params,
-		"image_file", data, fileHeader.Filename)
-	if err != nil {
-		return err
-	}
-
-	var faceRectTokens FaceRectTokens
-	err = json.Unmarshal(body, &faceRectTokens)
-	if err != nil {
-		return err
-	}
-	if len(faceRectTokens.Faces) < 1 {
-		c.JSON(http.StatusBadRequest, "no person in image")
-		return nil
-	}
-
-	stuFace := FaceNoToken{
-		FaceToken: faceRectTokens.Faces[0].FaceToken,
-		StudentNo: strings.TrimSuffix(fileHeader.Filename, path.Ext(fileHeader.Filename)),
-	}
-	c.JSON(http.StatusOK, stuFace)
-
-	return nil
-}
+//func detectFace(c *gin.Context) error {
+//	var err error
+//
+//	fileHeader, err := c.FormFile("image_file")
+//	if err != nil {
+//		return err
+//	}
+//	src, err := fileHeader.Open()
+//	if err != nil {
+//		return err
+//	}
+//	defer src.Close()
+//	data, err := ioutil.ReadAll(src)
+//	if err != nil {
+//		return err
+//	}
+//
+//	params := map[string]string{
+//		"api_key": config.ApiKey,
+//		"api_secret": config.ApiSecret,
+//	}
+//	body, err := fileUploadRequest(config.DetectFaceUrl, params,
+//		"image_file", data, fileHeader.Filename)
+//	if err != nil {
+//		return err
+//	}
+//
+//	var faceRectTokens FaceRectTokens
+//	err = json.Unmarshal(body, &faceRectTokens)
+//	if err != nil {
+//		return err
+//	}
+//	if len(faceRectTokens.Faces) < 1 {
+//		c.JSON(http.StatusBadRequest, "no person in image")
+//		return nil
+//	}
+//
+//	stuFace := FaceNoToken{
+//		FaceToken: faceRectTokens.Faces[0].FaceToken,
+//		StudentNo: strings.TrimSuffix(fileHeader.Filename, path.Ext(fileHeader.Filename)),
+//	}
+//	c.JSON(http.StatusOK, stuFace)
+//
+//	return nil
+//}
 
 func updateClassroomStats(c *gin.Context) (err error) {
 	var stats Stats
@@ -392,7 +392,7 @@ func updateClassroomStats(c *gin.Context) (err error) {
 
 	var classroom *Classroom
 	for _, classroomStats := range stats.Classrooms {
-		classroom, err = getClassroomByID(int(classroomStats.ClassroomID))
+		classroom, err = getClassroom(classroomStats.ClassroomNo)
 		if err != nil {
 			return
 		}
@@ -401,7 +401,7 @@ func updateClassroomStats(c *gin.Context) (err error) {
 			UpdateTime: stats.UpdateTime,
 			PersonCount: classroomStats.PersonCount,
 			Persons: classroomStats.Persons,
-			ClassroomID: classroom.ID,
+			ClassroomNo: *classroom.ClassroomNo,
 		})
 		if err != nil {
 			return
@@ -430,7 +430,7 @@ func sendClassroomStats(c *gin.Context) (err error) {
 	stats := SingleClassroomStats{
 		UpdateTime: classroomStatsItem.UpdateTime,
 		ClassroomStats: ClassroomStats{
-			ClassroomID: classroomStatsItem.ClassroomID,
+			ClassroomNo: classroomStatsItem.ClassroomNo,
 			PersonCount: classroomStatsItem.PersonCount,
 			Persons: classroomStatsItem.Persons,
 		},

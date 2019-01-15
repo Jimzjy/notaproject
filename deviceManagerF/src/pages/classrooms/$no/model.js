@@ -22,12 +22,12 @@ export default {
   effects: {
     *query({ payload }, { call, put }) {
       const data = yield call(queryClassrooms, payload)
-      const { success, classroom } = data
-      if (success && classroom.length > 0) {
+      const { success, classrooms } = data
+      if (success && classrooms.length > 0) {
         yield put({
           type: 'querySuccess',
           payload: {
-            data: classroom[0],
+            data: classrooms[0],
           },
         })
       } else {

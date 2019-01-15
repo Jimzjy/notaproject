@@ -82,6 +82,9 @@ class CameraModal extends PureComponent {
             {getFieldDecorator('device_id', {
               initialValue: item.device_id,
               rules: [
+                {
+                  required: true,
+                },
               ],
             })(<Input />)}
           </FormItem>
@@ -89,6 +92,9 @@ class CameraModal extends PureComponent {
             {getFieldDecorator('classroom_no', {
               initialValue: item.classroom_no,
               rules: [
+                {
+                  required: true,
+                },
               ],
             })(<Input />)}
           </FormItem>

@@ -172,8 +172,7 @@ type Classroom struct {
 }
 
 type ClassroomStats struct {
-	ClassroomID uint `json:"classroom_id"`
-	ClassroomName string `json:"classroom_name"`
+	ClassroomNo string `json:"classroom_no"`
 	PersonCount int `json:"person_count"`
 	Persons []DetectedData `json:"persons"`
 }
@@ -209,7 +208,7 @@ type ClassroomStatsTable struct {
 	UpdateTime time.Time
 	PersonCount int
 	Persons []DetectedData
-	ClassroomID uint
+	ClassroomNo string
 }
 
 type DeviceManagerSystemStats struct {

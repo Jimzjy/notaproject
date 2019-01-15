@@ -2,7 +2,7 @@ import { pathMatchRegexp } from 'utils'
 import { queryDevices } from 'api'
 
 export default {
-  namespace: 'devicesDetail',
+  namespace: 'deviceDetail',
 
   state: {
     data: {},

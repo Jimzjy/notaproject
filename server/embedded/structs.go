@@ -44,18 +44,20 @@ type Config struct {
 	SearchFaceUrl string `json:"search_face_url"`
 	DetectSkeletonUrl string `json:"detect_skeleton_url"`
 	DetectInterval int `json:"detect_interval"`
+	FaceDetectParam string `json:"face_detect_param"`
+	FaceDetectBin string `json:"face_detect_bin"`
+	BodyDetectParam string `json:"body_detect_param"`
+	BodyDetectBin string `json:"body_detect_bin"`
 	Classrooms []Classroom `json:"classrooms"`
 }
 
 type Classroom struct {
-	ClassroomID uint `json:"classroom_id"`
-	ClassroomName string `json:"classroom_name"`
-	CamPath string `json:"cam_path"`
+	ClassroomNo string `json:"classroom_no"`
+	CamStreamPath string `json:"cam_stream_path"`
 }
 
 type ClassroomStat struct {
-	ClassroomID uint `json:"classroom_id"`
-	ClassroomName string `json:"classroom_name"`
+	ClassroomNo string `json:"classroom_no"`
 	PersonCount int `json:"person_count"`
 	Persons []DetectedData `json:"persons"`
 }

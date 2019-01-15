@@ -49,7 +49,7 @@ class ClassromModal extends PureComponent {
           </FormItem>
           <FormItem label={`摄像头ID`} hasFeedback {...formItemLayout}>
             {getFieldDecorator('camera_id', {
-              initialValue: item.camera_id,
+              initialValue: item.camera_id || "",
               rules: [
               ],
             })(<Input />)}
