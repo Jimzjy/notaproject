@@ -30,12 +30,7 @@ func setupRouter() *gin.Engine {
 	router.Use(cors.Default())
 
 	// 人脸识别
-	router.POST("/face_search", func(c *gin.Context) {
-		if err := searchFace(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "can not get person data"})
-		}
-	})
+	router.GET("/face_search", searchFace)
 
 	// 设置
 	router.GET("/config", func(c *gin.Context) {

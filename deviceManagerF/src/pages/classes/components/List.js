@@ -55,6 +55,11 @@ class List extends PureComponent {
         key: 'face_count',
       },
       {
+        title: '教室号',
+        dataIndex: 'classroom_no',
+        key: 'classroom_no',
+      },
+      {
         title: 'FaceSet Token',
         dataIndex: 'faceset_token',
         key: 'faceset_token',

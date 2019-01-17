@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"io/ioutil"
@@ -27,6 +28,11 @@ const (
 )
 
 var config Config
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 // 获取设置文件信息
 func getConfig(config *Config) error {
@@ -69,19 +75,8 @@ func setConfig(c *gin.Context) error {
 func createClass(c *gin.Context) (err error) {
 	className := c.PostForm("class_name")
 	classImage := c.PostForm("class_image")
+	classroomNo := c.PostForm("classroom_no")
 	teacherNos := c.PostFormArray("teacher_nos")
-
-	body, err := sendPostForm(url.Values{
-		"api_key": {config.ApiKey},
-		"api_secret": {config.ApiSecret},
-		"display_name": {className},
-	}, config.CreateFaceSetUrl)
-
-	var classResponse ClassResponse
-	err = json.Unmarshal(body, &classResponse)
-	if err != nil {
-		return
-	}
 
 	teachers, err := getTeachers(teacherNos)
 	if err != nil {
@@ -96,11 +91,29 @@ func createClass(c *gin.Context) (err error) {
 		teacherPointers[k] = &v
 	}
 
+	classroom, err := getClassroom(classroomNo)
+	if err != nil {
+		return
+	}
+
+	body, err := sendPostForm(url.Values{
+		"api_key": {config.ApiKey},
+		"api_secret": {config.ApiSecret},
+		"display_name": {className},
+	}, config.CreateFaceSetUrl)
+
+	var classResponse ClassResponse
+	err = json.Unmarshal(body, &classResponse)
+	if err != nil {
+		return
+	}
+
 	class := Class{
 		FaceSetToken: classResponse.FaceSetToken,
 		ClassName: className,
 		ClassImage: classImage,
 		Teachers: teacherPointers,
+		ClassroomNo: *classroom.ClassroomNo,
 	}
 	err = createTableItem(&class)
 	if err != nil {
@@ -195,6 +208,7 @@ func updateClass(c *gin.Context) (err error) {
 	classID := c.PostForm("class_id")
 	className := c.PostForm("class_name")
 	classImage := c.PostForm("class_image")
+	classroomNo := c.PostForm("classroom_no")
 	studentNos := c.PostFormArray("student_nos")
 	teacherNos := c.PostFormArray("teacher_nos")
 
@@ -216,6 +230,12 @@ func updateClass(c *gin.Context) (err error) {
 	if oldClass.ClassName != className {
 		newClass.ClassName = className
 	}
+
+	classroom, err := getClassroom(classroomNo)
+	if err != nil {
+		return
+	}
+	newClass.ClassroomNo = *classroom.ClassroomNo
 
 	err = updateTableItem(oldClass, newClass)
 	if err != nil {
@@ -374,7 +394,7 @@ func updateClassroomStats(c *gin.Context) (err error) {
 		return
 	}
 
-	devicePath := strings.Split(c.Request.Host, ":")[0]
+	devicePath := strings.Split(c.Request.RemoteAddr, ":")[0]
 	device, err := getDeviceByPath(devicePath)
 	if err != nil {
 		return
@@ -1338,6 +1358,127 @@ func deleteClassrooms(c *gin.Context) (err error) {
 	return
 }
 
+func faceCount(c *gin.Context) (err error) {
+	classID := c.Query("class_id")
+	id, err := strconv.Atoi(classID)
+	if err != nil {
+		return
+	}
+	class, err := getClass(id)
+	if err != nil {
+		return
+	}
+
+	camera, err := getCamerasByClassroom(class.ClassroomNo)
+	if err != nil {
+		return
+	}
+	if len(camera) < 1 {
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no camera in classroom"})
+		return
+	}
+
+	device, err := getDevicesByCamera(int(camera[0].ID))
+	if err != nil {
+		return
+	}
+	if len(device) < 1 {
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no device"})
+		return
+	}
+
+	chanResp := make(chan string)
+	chanRequest := make(chan string)
+	chanPersonData := make(chan []byte)
+
+	go handleFaceCountResp(c, chanResp, chanPersonData)
+	go handleFaceCountRequest(camera[0].CamStreamPath, class.FaceSetToken,
+		device[0].DevicePath, device[0].DevicePort, chanRequest, chanPersonData)
+
+	<- chanRequest
+	<- chanResp
+	return
+}
+
+func handleFaceCountResp(c *gin.Context, chanResp chan string, chanPersonData chan []byte) {
+	defer close(chanResp)
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		log.Println("resp: ", err)
+		return
+	}
+	defer conn.Close()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("read from user:", err)
+				break
+			}
+		}
+	}()
+
+	for {
+		select {
+		case <-done:
+			return
+		case personData, ok := <-chanPersonData:
+			if ok {
+				err = conn.WriteMessage(websocket.TextMessage, personData)
+				if err != nil {
+					log.Println("write to user:", err)
+					return
+				}
+			} else {
+				err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+				if err != nil {
+					log.Println("write to user", err)
+					return
+				}
+				return
+			}
+		}
+	}
+}
+
+func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort string, chanRequest chan string, chanPersonData chan []byte) {
+	defer close(chanRequest)
+	defer close(chanPersonData)
+
+	urlString := fmt.Sprintf("ws://%v:%v/face_search?camStreamPath=%v&faceSetToken=%v",
+		devicePath, devicePort, camSteamPath, faceSetToken)
+
+	conn, _, err := websocket.DefaultDialer.Dial(urlString, nil)
+	if err != nil {
+		log.Println("request: ", err)
+		return
+	}
+	defer conn.Close()
+
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for {
+			_, data, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("read from embedded:", err)
+				return
+			}
+
+			chanPersonData <- data
+		}
+	}()
+
+	<- done
+}
+
 func adminLogin(c *gin.Context) (err error) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
@@ -1498,6 +1639,9 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 	}
 
 	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return
+	}
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 
 	client := http.Client{}
@@ -1530,7 +1674,7 @@ func checkIfInStringSlice(slice []string, value string) bool {
 }
 
 func updateFaceSetByStudentNos(oldStudents []Student, newStudentNos []string, faceSetToken string) (newStudents []*Student, err error) {
-	studentsAdd := ""
+	var studentsAdd []string
 	studentsDelete := ""
 	oldStudentNos := make([]string, len(oldStudents))
 
@@ -1553,23 +1697,18 @@ func updateFaceSetByStudentNos(oldStudents []Student, newStudentNos []string, fa
 		}
 		newStudents = append(newStudents, student)
 		if !checkIfInStringSlice(oldStudentNos, v) {
-			studentsAdd += fmt.Sprintf("%v,", student.FaceToken)
+			studentsAdd = append(studentsAdd, student.FaceToken)
 		}
 	}
 
 	studentsDelete = strings.TrimSuffix(studentsDelete, ",")
-	studentsAdd = strings.TrimSuffix(studentsAdd, ",")
 
 	removeNum := 0
 	removed := 0
 	added := 0
-	addNum := 0
 
 	if len(studentsDelete) > 0 {
 		removeNum = len(strings.Split(studentsDelete, ","))
-	}
-	if len(studentsAdd) > 0 {
-		addNum = len(strings.Split(studentsAdd, ","))
 	}
 
 	var body []byte
@@ -1593,13 +1732,26 @@ func updateFaceSetByStudentNos(oldStudents []Student, newStudentNos []string, fa
 		removed = resp.FaceRemoved
 	}
 
-	if addNum > 0 {
-		for i := 0; i < int(math.Ceil(float64(addNum) / 5)); i++ {
+	if len(studentsAdd) > 0 {
+		for i := 0; i < int(math.Ceil(float64(len(studentsAdd)) / 5)); i++ {
+			addString := ""
+			var addSlice []string
+			if (len(studentsAdd) - i * 5) >= 5 {
+				addSlice = studentsAdd[i*5:i*5+4]
+			} else {
+				addSlice = studentsAdd[i*5:]
+			}
+
+			for _, v := range addSlice {
+				addString += fmt.Sprintf("%v,", v)
+			}
+			addString = strings.TrimSuffix(addString, ",")
+
 			body, err = sendPostForm(url.Values{
 				"api_key": {config.ApiKey},
 				"api_secret": {config.ApiSecret},
 				"faceset_token": {faceSetToken},
-				"face_tokens": {studentsAdd},
+				"face_tokens": {addString},
 			}, config.AddFaceUrl)
 			if err != nil {
 				return
@@ -1613,10 +1765,10 @@ func updateFaceSetByStudentNos(oldStudents []Student, newStudentNos []string, fa
 		}
 	}
 
-	if removed != removeNum || added != addNum {
+	if removed != removeNum || added != len(studentsAdd) {
 		log.Println(studentsAdd)
 		log.Println(studentsDelete)
-		log.Printf("students not completely removed or added %v  %v  %v  %v\n", removed, removeNum, added, addNum)
+		log.Printf("students not completely removed or added %v  %v  %v  %v\n", removed, removeNum, added, len(studentsAdd))
 		return
 	}
 	return

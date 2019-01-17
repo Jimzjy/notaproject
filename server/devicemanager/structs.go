@@ -27,10 +27,10 @@ type FaceRectangle struct {
 	Height int `json:"height"`
 }
 
-type FaceNoToken struct {
-	FaceToken string `json:"face_token"`
-	StudentNo string `json:"student_no"`
-}
+//type PersonData struct {
+//	DetectedData DetectedData `json:"detected_data"`
+//	Token string `json:"face_token"`
+//}
 
 type JsonMessage struct {
 	Message string `json:"message"`
@@ -64,6 +64,7 @@ type ClassResponse struct {
 	ClassImage string `json:"class_image"`
 	FaceCount int `json:"face_count"`
 	FaceSetToken string `json:"faceset_token"`
+	ClassroomNo string `json:"classroom_no"`
 	StudentNos []string `json:"student_nos"`
 	TeacherNos []string `json:"teacher_nos"`
 }
@@ -125,6 +126,7 @@ type Class struct {
 	FaceSetToken string
 	ClassName string
 	ClassImage string
+	ClassroomNo string
 	Students []*Student `gorm:"many2many:student_class;"`
 	Teachers []*Teacher `gorm:"many2many:teacher_class;"`
 }
@@ -261,7 +263,7 @@ func newClassesResponse(classes []Class, page, pageSize string) (classesResp *Cl
 		}
 
 		if (len(classes) - start * size) > size {
-			classes = classes[(start - 1) * size: start * size]
+			classes = classes[(start - 1) * size: start * size - 1]
 		} else {
 			classes = classes[(start - 1) * size:]
 		}
@@ -273,6 +275,7 @@ func newClassesResponse(classes []Class, page, pageSize string) (classesResp *Cl
 		_classesResp[i].ClassName = classes[i].ClassName
 		_classesResp[i].FaceSetToken = classes[i].FaceSetToken
 		_classesResp[i].ClassImage = classes[i].ClassImage
+		_classesResp[i].ClassroomNo = classes[i].ClassroomNo
 
 		var students []Student
 		students, err = getStudentsByClass(int(classes[i].ID))
@@ -325,7 +328,7 @@ func newStudentsResponse(students []Student, page, pageSize string) (studentsRes
 		}
 
 		if (len(students) - start * size) > size {
-			students = students[(start - 1) * size: start * size]
+			students = students[(start - 1) * size: start * size - 1]
 		} else {
 			students = students[(start - 1) * size:]
 		}
@@ -374,7 +377,7 @@ func newDevicesResponse(devices []Device, page, pageSize string) (deviceResp *De
 		}
 
 		if (len(devices) - start * size) > size {
-			devices = devices[(start - 1) * size: start * size]
+			devices = devices[(start - 1) * size: start * size - 1]
 		} else {
 			devices = devices[(start - 1) * size:]
 		}
@@ -423,7 +426,7 @@ func newCamerasResponse(cameras []Camera, page, pageSize string) (camerasResp *C
 		}
 
 		if (len(cameras) - start * size) > size {
-			cameras = cameras[(start - 1) * size: start * size]
+			cameras = cameras[(start - 1) * size: start * size - 1]
 		} else {
 			cameras = cameras[(start - 1) * size:]
 		}
@@ -476,7 +479,7 @@ func newClassroomsResponse(classrooms []Classroom, page, pageSize string) (class
 		}
 
 		if (len(classrooms) - start * size) > size {
-			classrooms = classrooms[(start - 1) * size: start * size]
+			classrooms = classrooms[(start - 1) * size: start * size - 1]
 		} else {
 			classrooms = classrooms[(start - 1) * size:]
 		}
@@ -516,7 +519,7 @@ func newTeacherResponse(teachers []Teacher, page, pageSize string) (teachersResp
 		}
 
 		if (len(teachers) - start * size) > size {
-			teachers = teachers[(start - 1) * size: start * size]
+			teachers = teachers[(start - 1) * size: start * size - 1]
 		} else {
 			teachers = teachers[(start - 1) * size:]
 		}

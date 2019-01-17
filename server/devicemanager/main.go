@@ -66,8 +66,11 @@ func setupRouter() *gin.Engine {
 	//})
 
 	// 点名
-	router.POST("/face_count", func(c *gin.Context) {
-		// TODO("face count")
+	router.GET("/face_count", func(c *gin.Context) {
+		if err := faceCount(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "face count error"})
+		}
 	})
 
 	// 教室状态

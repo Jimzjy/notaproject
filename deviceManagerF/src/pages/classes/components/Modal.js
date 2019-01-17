@@ -50,6 +50,16 @@ class ClassModal extends PureComponent {
               ],
             })(<Input />)}
           </FormItem>
+          <FormItem label={`教室号`} hasFeedback {...formItemLayout}>
+            {getFieldDecorator('classroom_no', {
+              initialValue: item.classroom_no,
+              rules: [
+                {
+                  required: true,
+                },
+              ],
+            })(<Input />)}
+          </FormItem>
           <FormItem label={`教师`} hasFeedback {...formItemLayout}>
             {getFieldDecorator('teacher_nos', {
               initialValue: item.teacher_nos,

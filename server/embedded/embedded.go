@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"gocv.io/x/gocv"
@@ -32,6 +33,11 @@ const (
 )
 
 var config Config
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
 // 获取设置文件信息
 func getConfig(config *Config) error {
@@ -71,30 +77,75 @@ func setConfig(c *gin.Context) error {
 	return nil
 }
 
-// POST /faceSearch
-func searchFace(c *gin.Context) (err error) {
-	camStreamPath := c.PostForm("cam_stream_path")
-	faceSetToken := c.PostForm("faceset_token")
+func searchFace(c *gin.Context) {
+	var err error
 
-	personData, err := getSearchData(camStreamPath, faceSetToken)
+	camStreamPath := c.Query("camStreamPath")
+	faceSetToken := c.Query("faceSetToken")
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
+		log.Println(err)
 		return
 	}
+	defer conn.Close()
 
-	c.JSON(http.StatusOK, PersonDataFaces{Faces: personData})
-	return
+	done := make(chan string)
+	go func() {
+		defer close(done)
+
+		for {
+			_, _, err = conn.ReadMessage()
+			if err != nil {
+				log.Println("read from deviceManager:", err)
+				break
+			}
+		}
+	}()
+
+	chPersonData := make(chan PersonData)
+	go getSearchData(camStreamPath, faceSetToken, chPersonData)
+
+	for {
+		select {
+		case <-done:
+			return
+		case personData, ok := <-chPersonData:
+			if ok {
+				var data []byte
+				data, err = json.Marshal(personData)
+				if err != nil {
+					continue
+				}
+
+				err = conn.WriteMessage(websocket.TextMessage, data)
+				if err != nil {
+					log.Println("write to deviceManager", err)
+					return
+				}
+			} else {
+				err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+				if err != nil {
+					log.Println("write to deviceManager", err)
+					return
+				}
+				return
+			}
+		}
+	}
 }
 
 // 获得 人脸 Rect 和 Token
-func getSearchData(camStreamPath, faceSetToken string) ([]PersonData, error) {
-	var err error
+func getSearchData(camStreamPath, faceSetToken string, chPersonData chan PersonData) {
+	defer close(chPersonData)
 
 	detectedImage, err := getDetectedImage(camStreamPath, FaceDetect)
 	if err != nil {
-		return nil, err
+		log.Println(err)
+		close(chPersonData)
+		return
 	}
 
-	personData := make([]PersonData, len(detectedImage))
 	params := map[string]string{
 		"api_key": config.ApiKey,
 		"api_secret": config.ApiSecret,
@@ -102,20 +153,27 @@ func getSearchData(camStreamPath, faceSetToken string) ([]PersonData, error) {
 	}
 	for i := 0; i < len(detectedImage); i++ {
 		_image := detectedImage[i]
-		response, err := fileUploadRequest(config.SearchFaceUrl, params,
+		var response *http.Response
+		response, err = fileUploadRequest(config.SearchFaceUrl, params,
 			"image_file", _image.Data, "image.jpg")
 		if err != nil {
-			return nil, err
+			log.Println(err)
+			close(chPersonData)
+			return
 		}
 		if response.StatusCode != http.StatusOK {
 			response.Body.Close()
-			return nil, fmt.Errorf(response.Status)
+			log.Println(err)
+			close(chPersonData)
+			return
 		}
 
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			response.Body.Close()
-			return nil, err
+			log.Println(err)
+			close(chPersonData)
+			return
 		}
 
 		response.Body.Close()
@@ -123,22 +181,22 @@ func getSearchData(camStreamPath, faceSetToken string) ([]PersonData, error) {
 		var searchFaceResponse SearchFaceResults
 		err = json.Unmarshal(body, &searchFaceResponse)
 		if err != nil {
-			return nil, err
+			log.Println(err)
+			close(chPersonData)
+			return
 		}
 		results := searchFaceResponse.Results
 		if len(results) > 0 {
 			confidence := results[0].Confidence
 			if confidence > 75 {
-				personData[i] = PersonData{_image.DetectedData, results[0].FaceToken}
+				chPersonData <- PersonData{_image.DetectedData, results[0].FaceToken}
 			} else {
-				personData[i] = PersonData{_image.DetectedData, ""}
+				chPersonData <- PersonData{_image.DetectedData, ""}
 			}
 		} else {
-			personData[i] = PersonData{_image.DetectedData, ""}
+			chPersonData <- PersonData{_image.DetectedData, ""}
 		}
 	}
-
-	return personData, nil
 }
 
 // 获得当前 Mat
@@ -202,7 +260,7 @@ func getDetectedData(img gocv.Mat, mode int) ([]DetectedData, error) {
 		break
 	case BodyDetect:
 		_param = config.BodyDetectParam
-		_model = config.FaceDetectBin
+		_model = config.BodyDetectBin
 		break
 	default:
 	}
@@ -274,13 +332,13 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 }
 
 func uploadStats() {
-	ticker := time.NewTicker(time.Duration(config.DetectInterval * 1000000000))
+	ticker := time.NewTicker(time.Duration(config.DetectInterval * 1e9))
 	var err error
 
 	for range ticker.C {
 		err = uploadStatsRequest()
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 	}
 }
@@ -330,9 +388,12 @@ func uploadStatsRequest() error {
 		return err
 	}
 
-	url := fmt.Sprintf("%v/classrooms", config.ServerAddr)
+	url := fmt.Sprintf("http://%v/classroom_stats", config.ServerAddr)
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStats))
-	request.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		return err
+	}
+	request.Header.Add("Content-Type", "application/json")
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
