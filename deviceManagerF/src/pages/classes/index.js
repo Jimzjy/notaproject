@@ -42,9 +42,7 @@ class Classes extends PureComponent {
       visible: modalVisible,
       maskClosable: false,
       confirmLoading: loading.effects[`classes/${modalType}`],
-      title: `${
-        modalType === 'create' ? `创建班级信息` : `更新班级信息`
-      }`,
+      title: `${modalType === 'create' ? `创建班级信息` : `更新班级信息`}`,
       centered: true,
       onOk(data) {
         dispatch({

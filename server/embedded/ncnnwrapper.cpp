@@ -42,6 +42,10 @@ Rects detectFromByte(unsigned char* data, int cols, int rows, Ncnnnet net, int m
     {
         const float* values = out.row(i);
 
+        if (values[1] < 0.4) {
+            continue;
+        }
+
         if (mode == BODY_DETECT) {
             int label = values[0];
             if (label != 15) continue;
@@ -56,6 +60,7 @@ Rects detectFromByte(unsigned char* data, int cols, int rows, Ncnnnet net, int m
         vrects.push_back(rect);
 
         //fprintf(stdout, "x %d y %d x1 %d y1 %d\n", rect.x0, rect.y0, rect.x1, rect.y1);
+        //fprintf(stdout, "p: %f\n", values[1]);
     }
     Rects rects = {vrects.size(), &vrects[0]};
 

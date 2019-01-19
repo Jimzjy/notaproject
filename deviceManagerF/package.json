@@ -22,6 +22,7 @@
     "highcharts-exporting": "^0.1.7",
     "highcharts-more": "^0.1.7",
     "json-format": "^1.0.1",
+    "konva": "^2.6.0",
     "lodash": "^4.17.11",
     "md5": "^2.2.1",
     "nprogress": "^0.2.0",
@@ -34,6 +35,7 @@
     "react-draft-wysiwyg": "^1.12.13",
     "react-helmet": "^5.2.0",
     "react-highcharts": "^16.0.2",
+    "react-konva": "^16.6.31",
     "react-perfect-scrollbar": "^1.4.2",
     "recharts": "^1.4.1",
     "store": "^2.0.12"
