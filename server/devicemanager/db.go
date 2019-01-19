@@ -263,6 +263,22 @@ func getStudent(studentNo string) (student *Student, err error) {
 	return
 }
 
+func getStudentByFaceToken(token string) (student *Student, err error) {
+	student = &Student{}
+
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.First(student, "face_token = ?", token)
+	if student.ID == 0 {
+		err = fmt.Errorf("can not find student for token %v", token)
+	}
+	return
+}
+
 func getStudentsByClass(classID int) (students []Student, err error) {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {

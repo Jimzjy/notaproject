@@ -5,6 +5,7 @@ import { i18n } from './src/utils/config'
 export default {
   ignoreMomentLocale: true,
   targets: { ie: 9 },
+  treeShaking: true,
   plugins: [
     [
       // https://umijs.org/plugin/umi-plugin-react.html
@@ -57,7 +58,7 @@ export default {
         dll: {
           include: ['dva', 'dva/router', 'dva/saga', 'dva/fetch', 'antd/es'],
         },
-        hardSource: /* isMac */ process.platform === 'darwin',
+        //hardSource: /* isMac */ process.platform === 'darwin',
         pwa: {
           manifestOptions: {
             srcPath: 'manifest.json'

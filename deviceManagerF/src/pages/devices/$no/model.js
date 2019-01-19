@@ -1,5 +1,9 @@
 import { pathMatchRegexp } from 'utils'
-import { queryDevices } from 'api'
+import api from 'api'
+
+const { 
+  queryDevices
+} = api
 
 export default {
   namespace: 'deviceDetail',

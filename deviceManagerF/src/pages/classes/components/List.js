@@ -2,8 +2,6 @@ import React, { PureComponent } from 'react'
 import PropTypes from 'prop-types'
 import { Table, Modal, Avatar, Tag } from 'antd'
 import { DropOption } from 'components'
-import { router } from 'utils'
-import { Color } from 'utils'
 import Link from 'umi/link'
 import styles from './List.less'
 import { apiPrefix } from 'utils/config'
@@ -20,7 +18,7 @@ class List extends PureComponent {
       confirm({
         title: `确认删除所选班级信息?`,
         onOk() {
-          onDeleteItem({class_id: record.class_id})
+          onDeleteItem({ class_id: record.class_id })
         },
       })
     }
@@ -36,7 +34,12 @@ class List extends PureComponent {
         key: 'class_image',
         width: 72,
         fixed: 'left',
-        render: text => <Avatar style={{ marginLeft: 8 }} src={`${apiPrefix}/images/${text}`} />,
+        render: text => (
+          <Avatar
+            style={{ marginLeft: 8 }}
+            src={`${apiPrefix}/images/${text}`}
+          />
+        ),
       },
       {
         title: '班级号',

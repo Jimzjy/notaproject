@@ -1,5 +1,7 @@
 import { pathMatchRegexp } from 'utils'
-import { queryCameras } from 'api'
+import api from 'api'
+
+const { queryCameras } = api
 
 export default {
   namespace: 'cameraDetail',

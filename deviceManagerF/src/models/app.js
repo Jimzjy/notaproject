@@ -6,12 +6,30 @@ import store from 'store'
 import { ROLE_TYPE, ROUTE_LIST } from 'utils/constant'
 import { queryLayout, pathMatchRegexp } from 'utils'
 import { CANCEL_REQUEST_MESSAGE } from 'utils/constant'
-import { logoutAdmin, queryAdminInfo } from 'api'
 import config from 'config'
+import api from 'api'
+
+const { logoutAdmin, queryAdminInfo } = api
 
 const UserPermission = {
   DEFAULT: {
-    visit: ['1', '5', '6', '51', '52', '53', '511', '521', '531', '61', '62', '63', '611', '621', '631'],
+    visit: [
+      '1',
+      '5',
+      '6',
+      '51',
+      '52',
+      '53',
+      '511',
+      '521',
+      '531',
+      '61',
+      '62',
+      '63',
+      '611',
+      '621',
+      '631',
+    ],
     role: ROLE_TYPE.DEFAULT,
   },
   DEVELOPER: {
@@ -39,8 +57,7 @@ export default {
     locationQuery: {},
     theme: store.get('theme') || 'light',
     collapsed: store.get('collapsed') || false,
-    notifications: [
-    ],
+    notifications: [],
   },
   subscriptions: {
     setupHistory({ dispatch, history }) {

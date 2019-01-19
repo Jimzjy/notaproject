@@ -1,5 +1,9 @@
 import { pathMatchRegexp } from 'utils'
-import { queryTeachers } from 'api'
+import api from 'api'
+
+const { 
+  queryTeachers
+} = api
 
 export default {
   namespace: 'teacherDetail',

@@ -28,6 +28,15 @@ type FaceRectangle struct {
 	Height int `json:"height"`
 }
 
+type PersonData struct {
+	DetectedData DetectedData `json:"detected_data"`
+	Token string `json:"face_token"`
+	GlobalWidth float64 `json:"global_width"`
+	GlobalHeight float64 `json:"global_height"`
+	PersonCount int `json:"person_count"`
+	ImageUrl string `json:"image_url"`
+}
+
 type JsonMessage struct {
 	Message string `json:"message"`
 }

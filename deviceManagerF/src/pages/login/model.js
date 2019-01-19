@@ -1,5 +1,7 @@
 import { router, pathMatchRegexp } from 'utils'
-import { loginAdmin } from 'api'
+import api from 'api'
+
+const { loginAdmin } = api
 
 export default {
   namespace: 'login',

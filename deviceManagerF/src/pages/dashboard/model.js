@@ -1,9 +1,11 @@
 import { parse } from 'qs'
 import modelExtend from 'dva-model-extend'
-import { queryDashboard } from 'api'
 import { pathMatchRegexp } from 'utils'
 import { model } from 'utils/model'
 import { Color } from 'utils'
+import api from 'api'
+
+const { queryDashboard } = api
 
 const numbersTemplate = [
   {

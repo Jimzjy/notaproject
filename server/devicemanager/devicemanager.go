@@ -1462,6 +1462,7 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 
 	done := make(chan struct{})
 
+	var personData PersonData
 	go func() {
 		defer close(done)
 
@@ -1472,7 +1473,34 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 				return
 			}
 
-			chanPersonData <- data
+			err = json.Unmarshal(data, &personData)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			if personData.Token == "" {
+				chanPersonData <- data
+				continue
+			}
+
+			var student *Student
+			student, err = getStudentByFaceToken(personData.Token)
+			if err != nil {
+				log.Println(err)
+				chanPersonData <- data
+				continue
+			}
+
+			personData.Token = *student.StudentNo
+			data2, err := json.Marshal(personData)
+			if err != nil {
+				log.Println(err)
+				chanPersonData <- data
+				continue
+			}
+
+			chanPersonData <- data2
 		}
 	}()
 

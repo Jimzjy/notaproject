@@ -27,4 +27,4 @@ for (const key in api) {
   APIFunction[key] = gen(api[key])
 }
 
-module.exports = APIFunction
+export default APIFunction
