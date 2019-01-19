@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/jinzhu/gorm"
 	"strconv"
 	"time"
@@ -26,11 +27,6 @@ type FaceRectangle struct {
 	Left int `json:"left"`
 	Height int `json:"height"`
 }
-
-//type PersonData struct {
-//	DetectedData DetectedData `json:"detected_data"`
-//	Token string `json:"face_token"`
-//}
 
 type JsonMessage struct {
 	Message string `json:"message"`
@@ -93,7 +89,7 @@ type CameraResponse struct {
 	CamAuthName string `json:"cam_auth_name"`
 	CamAuthPassword string `json:"cam_auth_password"`
 	ClassroomNo string `json:"classroom_no"`
-	DeviceID uint `json:"device_id"`
+	DeviceID string `json:"device_id"`
 }
 type CamerasResponse struct {
 	Cameras []CameraResponse `json:"cameras"`
@@ -102,7 +98,7 @@ type CamerasResponse struct {
 
 type ClassroomResponse struct {
 	ClassroomNo string `json:"classroom_no"`
-	CameraID uint `json:"camera_id"`
+	CameraID string `json:"camera_id"`
 }
 type ClassroomsResponse struct {
 	Classrooms []ClassroomResponse `json:"classrooms"`
@@ -251,6 +247,8 @@ type UpdateFaceResp struct {
 func newClassesResponse(classes []Class, page, pageSize string) (classesResp *ClassesResponse, err error) {
 	classesResp = &ClassesResponse{}
 
+	classesResp.Total = len(classes)
+
 	if page != "" && pageSize != "" {
 		var start, size int
 		start, err = strconv.Atoi(page)
@@ -309,12 +307,13 @@ func newClassesResponse(classes []Class, page, pageSize string) (classesResp *Cl
 	}
 
 	classesResp.Classes = _classesResp
-	classesResp.Total = len(_classesResp)
 	return
 }
 
 func newStudentsResponse(students []Student, page, pageSize string) (studentsResp *StudentsResponse, err error) {
 	studentsResp = &StudentsResponse{}
+
+	studentsResp.Total = len(students)
 
 	if page != "" && pageSize != "" {
 		var start, size int
@@ -358,12 +357,12 @@ func newStudentsResponse(students []Student, page, pageSize string) (studentsRes
 	}
 
 	studentsResp.Students = studentsResponse
-	studentsResp.Total = len(studentsResponse)
 	return
 }
 
 func newDevicesResponse(devices []Device, page, pageSize string) (deviceResp *DevicesResponse, err error) {
 	deviceResp = &DevicesResponse{}
+	deviceResp.Total = len(devices)
 
 	if page != "" && pageSize != "" {
 		var start, size int
@@ -407,12 +406,12 @@ func newDevicesResponse(devices []Device, page, pageSize string) (deviceResp *De
 	}
 
 	deviceResp.Devices = devicesResponse
-	deviceResp.Total = len(devicesResponse)
 	return
 }
 
 func newCamerasResponse(cameras []Camera, page, pageSize string) (camerasResp *CamerasResponse, err error) {
 	camerasResp = &CamerasResponse{}
+	camerasResp.Total = len(cameras)
 
 	if page != "" && pageSize != "" {
 		var start, size int
@@ -446,7 +445,7 @@ func newCamerasResponse(cameras []Camera, page, pageSize string) (camerasResp *C
 			return
 		}
 		if len(devices) > 0 && devices[0].ID != 0 {
-			camerasResponse[k].DeviceID = devices[0].ID
+			camerasResponse[k].DeviceID = fmt.Sprint(devices[0].ID)
 		}
 
 		var classrooms []Classroom
@@ -460,12 +459,12 @@ func newCamerasResponse(cameras []Camera, page, pageSize string) (camerasResp *C
 	}
 
 	camerasResp.Cameras = camerasResponse
-	camerasResp.Total = len(camerasResponse)
 	return
 }
 
 func newClassroomsResponse(classrooms []Classroom, page, pageSize string) (classroomsResp *ClassroomsResponse, err error) {
 	classroomsResp = &ClassroomsResponse{}
+	classroomsResp.Total = len(classrooms)
 
 	if page != "" && pageSize != "" {
 		var start, size int
@@ -495,17 +494,17 @@ func newClassroomsResponse(classrooms []Classroom, page, pageSize string) (class
 			return
 		}
 		if len(cameras) > 0 && cameras[0].ID != 0 {
-			classroomsResponse[k].CameraID = cameras[0].ID
+			classroomsResponse[k].CameraID = fmt.Sprint(cameras[0].ID)
 		}
 	}
 
 	classroomsResp.Classrooms = classroomsResponse
-	classroomsResp.Total = len(classroomsResponse)
 	return
 }
 
 func newTeacherResponse(teachers []Teacher, page, pageSize string) (teachersResp *TeachersResponse, err error) {
 	teachersResp = &TeachersResponse{}
+	teachersResp.Total = len(teachers)
 
 	if page != "" && pageSize != "" {
 		var start, size int
@@ -548,6 +547,5 @@ func newTeacherResponse(teachers []Teacher, page, pageSize string) (teachersResp
 	}
 
 	teachersResp.Teachers = _teacherResp
-	teachersResp.Total = len(_teacherResp)
 	return
 }

@@ -5,8 +5,6 @@
 
 typedef struct Rect
 {
-    int place0;
-    int place1;
     int x0;
     int y0;
     int x1;

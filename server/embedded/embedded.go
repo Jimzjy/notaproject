@@ -13,6 +13,7 @@ import (
 	"image"
 	"io/ioutil"
 	"log"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"reflect"
@@ -32,14 +33,17 @@ const (
 	ConfigFileName = "config.json"
 )
 
-var config Config
+var (
+	config Config
+	globalWidth float64
+	globalHeight float64
+	)
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
 }
 
-// 获取设置文件信息
 func getConfig(config *Config) error {
 	var err error
 
@@ -135,15 +139,35 @@ func searchFace(c *gin.Context) {
 	}
 }
 
-// 获得 人脸 Rect 和 Token
 func getSearchData(camStreamPath, faceSetToken string, chPersonData chan PersonData) {
+	var err error
 	defer close(chPersonData)
 
-	detectedImage, err := getDetectedImage(camStreamPath, FaceDetect)
+	gImage, detectedImage, err := getDetectedImage(camStreamPath, FaceDetect)
 	if err != nil {
 		log.Println(err)
-		close(chPersonData)
 		return
+	}
+
+	var body []byte
+	body, err = fileUploadRequest(fmt.Sprintf("http://%v/images", config.ServerAddr),
+		map[string]string{}, "file", gImage, "image.jpg")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	var jsonMessage JsonMessage
+	err = json.Unmarshal(body, &jsonMessage)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	personData := PersonData{
+		PersonCount: len(detectedImage),
+		ImageUrl: jsonMessage.Message,
+		GlobalWidth: globalWidth,
+		GlobalHeight: globalHeight,
 	}
 
 	params := map[string]string{
@@ -153,59 +177,55 @@ func getSearchData(camStreamPath, faceSetToken string, chPersonData chan PersonD
 	}
 	for i := 0; i < len(detectedImage); i++ {
 		_image := detectedImage[i]
-		var response *http.Response
-		response, err = fileUploadRequest(config.SearchFaceUrl, params,
+		_personData := personData
+
+		body, err = fileUploadRequest(config.SearchFaceUrl, params,
 			"image_file", _image.Data, "image.jpg")
 		if err != nil {
 			log.Println(err)
-			close(chPersonData)
-			return
+			if err.Error() != "response not ok" {
+				return
+			} else {
+				_personData.DetectedData = _image.DetectedData
+				chPersonData <- _personData
+				continue
+			}
 		}
-		if response.StatusCode != http.StatusOK {
-			response.Body.Close()
-			log.Println(err)
-			close(chPersonData)
-			return
-		}
-
-		body, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			response.Body.Close()
-			log.Println(err)
-			close(chPersonData)
-			return
-		}
-
-		response.Body.Close()
 
 		var searchFaceResponse SearchFaceResults
 		err = json.Unmarshal(body, &searchFaceResponse)
 		if err != nil {
 			log.Println(err)
-			close(chPersonData)
 			return
 		}
 		results := searchFaceResponse.Results
 		if len(results) > 0 {
 			confidence := results[0].Confidence
-			if confidence > 75 {
-				chPersonData <- PersonData{_image.DetectedData, results[0].FaceToken}
+			if confidence > 40 {
+				_personData.DetectedData = _image.DetectedData
+				_personData.Token = results[0].FaceToken
+				chPersonData <- _personData
 			} else {
-				chPersonData <- PersonData{_image.DetectedData, ""}
+				_personData.DetectedData = _image.DetectedData
+				chPersonData <- _personData
 			}
 		} else {
-			chPersonData <- PersonData{_image.DetectedData, ""}
+			_personData.DetectedData = _image.DetectedData
+			chPersonData <- _personData
 		}
 	}
 }
 
-// 获得当前 Mat
 func getCameraImage(camStreamPath string, img *gocv.Mat) error {
 	webCam, err := gocv.OpenVideoCapture(camStreamPath)
 	if err != nil {
 		return err
 	}
 	defer webCam.Close()
+
+	globalWidth = webCam.Get(gocv.VideoCaptureFrameWidth)
+	globalHeight = webCam.Get(gocv.VideoCaptureFrameHeight)
+
 	if ok := webCam.Read(img); !ok {
 		return fmt.Errorf("can not read from webCam")
 	}
@@ -213,55 +233,58 @@ func getCameraImage(camStreamPath string, img *gocv.Mat) error {
 	return nil
 }
 
-// 获得输入 camStreamPath 中的人脸检测结果
-// return 人脸 Rect 和 jpg
-func getDetectedImage(camStreamPath string, mode int) ([]DetectedImage, error) {
+func getDetectedImage(camStreamPath string, mode int) ([]byte, []DetectedImage, error) {
 	var err error
 
 	img := gocv.NewMat()
 	defer img.Close()
 	err = getCameraImage(camStreamPath, &img)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	detectedData, err := getDetectedData(img, mode)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	detectedImage := make([]DetectedImage, len(detectedData))
 	for i := 0; i < len(detectedData); i++  {
 		rect := detectedData[i]
 		_img, err := img.FromRect(image.Rect(rect.X0, rect.Y0, rect.X1, rect.Y1))
+		if rect.X1 - rect.X0 < 80 {
+			fx := math.Ceil(80 / float64(rect.X1 - rect.X0))
+			gocv.Resize(_img, &_img, image.Pt(0, 0), fx, fx, gocv.InterpolationArea)
+		}
 
 		detectedImage[i].Data, err = gocv.IMEncode(".jpg", _img)
 		detectedImage[i].DetectedData = rect
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return detectedImage, nil
+	gImage, err := gocv.IMEncode(".jpg", img)
+	if err != nil {
+		return nil, nil, err
+	}
+	return gImage, detectedImage, nil
 }
 
-
-// 获得输入 Mat 中的人脸检测结果
-// return 人脸 Rect
 func getDetectedData(img gocv.Mat, mode int) ([]DetectedData, error) {
 	ncnnnet := C.newNcnnnet()
 	defer C.free(unsafe.Pointer(ncnnnet))
 	var _param, _model string
+	bias := 0
 
 	switch mode {
 	case FaceDetect:
 		_param = config.FaceDetectParam
 		_model = config.FaceDetectBin
-		break
+		bias = 10
 	case BodyDetect:
 		_param = config.BodyDetectParam
 		_model = config.BodyDetectBin
-		break
 	default:
 	}
 
@@ -282,41 +305,39 @@ func getDetectedData(img gocv.Mat, mode int) ([]DetectedData, error) {
 	}
 	rectsSlice := *(*[]C.Rect)(unsafe.Pointer(header))
 
-	detectedData := make([]DetectedData, len(rectsSlice))
+	detectedData := make([]DetectedData, len(rectsSlice) - 1)
 
-	bias := 20
-	for i := 0; i < len(rectsSlice); i++ {
+	for i := 1; i < len(rectsSlice); i++ {
 		rect := rectsSlice[i]
-		detectedData[i] = DetectedData{int(rect.x0) - bias, int(rect.y0) - bias, int(rect.x1) + bias, int(rect.y1) + bias}
+		detectedData[i-1] = DetectedData{int(rect.x0) - bias, int(rect.y0) - bias, int(rect.x1) + bias, int(rect.y1) + bias}
+		//fmt.Println(detectedData[i-1])
 	}
 
 	return detectedData, nil
 }
 
-
-// 文件上传 Request
-// return Response
-func fileUploadRequest(url string, params map[string]string, fileParamName string, fileContent []byte, fileName string) (*http.Response, error) {
-	var err error
-
+func fileUploadRequest(url string, params map[string]string, fileParamName string, fileContent []byte, fileName string) (bodyResp []byte, err error) {
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
 
 	part, err := writer.CreateFormFile(fileParamName, fileName)
 	if err != nil {
-		return nil, err
+		return
 	}
-	part.Write(fileContent)
+	_, err = part.Write(fileContent)
+	if err != nil {
+		return
+	}
 
 	for key, val := range params {
 		err = writer.WriteField(key, val)
 		if err != nil {
-			return nil, err
+			return
 		}
 	}
 	err = writer.Close()
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	request, err := http.NewRequest("POST", url, body)
@@ -325,10 +346,21 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 	client := http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		return nil, err
+		return
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		err = fmt.Errorf("response not ok")
+		return
 	}
 
-	return response, err
+	bodyResp, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
 func uploadStats() {

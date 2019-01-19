@@ -12,6 +12,10 @@ type DetectedData struct {
 type PersonData struct {
 	DetectedData DetectedData `json:"detected_data"`
 	Token string `json:"face_token"`
+	GlobalWidth float64 `json:"global_width"`
+	GlobalHeight float64 `json:"global_height"`
+	PersonCount int `json:"person_count"`
+	ImageUrl string `json:"image_url"`
 }
 
 type DetectedImage struct {
@@ -32,9 +36,9 @@ type JsonMessage struct {
 	Message string `json:"message"`
 }
 
-type PersonDataFaces struct {
-	Faces []PersonData `json:"faces"`
-}
+//type PersonDataFaces struct {
+//	Faces []PersonData `json:"faces"`
+//}
 
 type Config struct {
 	LocalPort string `json:"local_port"`

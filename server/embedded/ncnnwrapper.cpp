@@ -34,7 +34,10 @@ Rects detectFromByte(unsigned char* data, int cols, int rows, Ncnnnet net, int m
     ncnn::Mat out;
     ex.extract("detection_out",out);
 
-    std::vector<Rect> vrects; 
+    std::vector<Rect> vrects;
+
+    Rect rectHeader;
+    vrects.push_back(rectHeader);
     for (int i=0; i<out.h; i++)
     {
         const float* values = out.row(i);
