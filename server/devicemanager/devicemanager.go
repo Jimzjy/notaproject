@@ -1393,7 +1393,7 @@ func faceCount(c *gin.Context) (err error) {
 
 	go handleFaceCountResp(c, chanResp, chanPersonData)
 	go handleFaceCountRequest(camera[0].CamStreamPath, class.FaceSetToken,
-		device[0].DevicePath, device[0].DevicePort, chanRequest, chanPersonData)
+		device[0].DevicePath, device[0].DevicePort, chanRequest, chanPersonData, chanResp)
 
 	<- chanRequest
 	<- chanResp
@@ -1446,7 +1446,7 @@ func handleFaceCountResp(c *gin.Context, chanResp chan string, chanPersonData ch
 	}
 }
 
-func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort string, chanRequest chan string, chanPersonData chan []byte) {
+func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort string, chanRequest chan string, chanPersonData chan []byte, chanResp chan string) {
 	defer close(chanRequest)
 	defer close(chanPersonData)
 
@@ -1467,40 +1467,45 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 		defer close(done)
 
 		for {
-			_, data, err := conn.ReadMessage()
-			if err != nil {
-				log.Println("read from embedded:", err)
+			select {
+			case <-chanResp:
 				return
-			}
+			default:
+				_, data, err := conn.ReadMessage()
+				if err != nil {
+					log.Println("read from embedded:", err)
+					return
+				}
 
-			err = json.Unmarshal(data, &personData)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
+				err = json.Unmarshal(data, &personData)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
 
-			if personData.Token == "" {
-				chanPersonData <- data
-				continue
-			}
+				if personData.Token == "" {
+					chanPersonData <- data
+					continue
+				}
 
-			var student *Student
-			student, err = getStudentByFaceToken(personData.Token)
-			if err != nil {
-				log.Println(err)
-				chanPersonData <- data
-				continue
-			}
+				var student *Student
+				student, err = getStudentByFaceToken(personData.Token)
+				if err != nil {
+					log.Println(err)
+					chanPersonData <- data
+					continue
+				}
 
-			personData.Token = *student.StudentNo
-			data2, err := json.Marshal(personData)
-			if err != nil {
-				log.Println(err)
-				chanPersonData <- data
-				continue
-			}
+				personData.Token = *student.StudentNo
+				data2, err := json.Marshal(personData)
+				if err != nil {
+					log.Println(err)
+					chanPersonData <- data
+					continue
+				}
 
-			chanPersonData <- data2
+				chanPersonData <- data2
+			}
 		}
 	}()
 

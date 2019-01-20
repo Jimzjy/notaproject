@@ -43,6 +43,39 @@ var upgrader = websocket.Upgrader{
 		return true
 	},
 }
+var ncnnnetFace = C.newNcnnnet()
+var ncnnnetBody = C.newNcnnnet()
+
+func main() {
+	var err error
+
+	err = getConfig(&config)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	paramFace := C.CString(config.FaceDetectParam)
+	modelFace := C.CString(config.FaceDetectBin)
+	paramBody := C.CString(config.BodyDetectParam)
+	modelBody := C.CString(config.BodyDetectBin)
+	C.ncnnnetLoad(paramFace, modelFace, ncnnnetFace)
+	C.ncnnnetLoad(paramBody, modelBody, ncnnnetBody)
+	defer C.free(unsafe.Pointer(ncnnnetFace))
+	defer C.free(unsafe.Pointer(ncnnnetBody))
+	C.free(unsafe.Pointer(paramFace))
+	C.free(unsafe.Pointer(modelFace))
+	C.free(unsafe.Pointer(paramBody))
+	C.free(unsafe.Pointer(modelBody))
+
+	go uploadStats()
+
+	router := setupRouter()
+	err = router.Run(config.LocalPort)
+	if err != nil {
+		log.Println(err)
+	}
+}
 
 func getConfig(config *Config) error {
 	var err error
@@ -233,69 +266,63 @@ func getCameraImage(camStreamPath string, img *gocv.Mat) error {
 	return nil
 }
 
-func getDetectedImage(camStreamPath string, mode int) ([]byte, []DetectedImage, error) {
-	var err error
-
+func getDetectedImage(camStreamPath string, mode int) (gImage []byte, detectedImage []DetectedImage, err error) {
 	img := gocv.NewMat()
 	defer img.Close()
 	err = getCameraImage(camStreamPath, &img)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
 	detectedData, err := getDetectedData(img, mode)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
 
-	detectedImage := make([]DetectedImage, len(detectedData))
+	detectedImage = make([]DetectedImage, len(detectedData))
 	for i := 0; i < len(detectedData); i++  {
 		rect := detectedData[i]
-		_img, err := img.FromRect(image.Rect(rect.X0, rect.Y0, rect.X1, rect.Y1))
+		var _img gocv.Mat
+		_img, err = img.FromRect(image.Rect(rect.X0, rect.Y0, rect.X1, rect.Y1))
+		if err != nil {
+			return
+		}
 		if rect.X1 - rect.X0 < 80 {
 			fx := math.Ceil(80 / float64(rect.X1 - rect.X0))
 			gocv.Resize(_img, &_img, image.Pt(0, 0), fx, fx, gocv.InterpolationArea)
 		}
 
 		detectedImage[i].Data, err = gocv.IMEncode(".jpg", _img)
-		detectedImage[i].DetectedData = rect
 		if err != nil {
-			return nil, nil, err
+			return
 		}
+		err = _img.Close()
+		if err != nil {
+			log.Println(err)
+		}
+		detectedImage[i].DetectedData = rect
 	}
 
-	gImage, err := gocv.IMEncode(".jpg", img)
+	gImage, err = gocv.IMEncode(".jpg", img)
 	if err != nil {
-		return nil, nil, err
+		return
 	}
-	return gImage, detectedImage, nil
+	return
 }
 
 func getDetectedData(img gocv.Mat, mode int) ([]DetectedData, error) {
-	ncnnnet := C.newNcnnnet()
-	defer C.free(unsafe.Pointer(ncnnnet))
-	var _param, _model string
 	bias := 0
 
+	data := (*C.uchar)(unsafe.Pointer(&(img.DataPtrUint8()[0])))
+	var rects C.Rects
 	switch mode {
 	case FaceDetect:
-		_param = config.FaceDetectParam
-		_model = config.FaceDetectBin
 		bias = 10
+		rects = C.detectFromByte(data, C.int(img.Cols()), C.int(img.Rows()), ncnnnetFace, C.int(mode))
 	case BodyDetect:
-		_param = config.BodyDetectParam
-		_model = config.BodyDetectBin
-	default:
+		rects = C.detectFromByte(data, C.int(img.Cols()), C.int(img.Rows()), ncnnnetBody, C.int(mode))
 	}
 
-	param := C.CString(_param)
-	model := C.CString(_model)
-	defer C.free(unsafe.Pointer(param))
-	defer C.free(unsafe.Pointer(model))
-	C.ncnnnetLoad(param, model, ncnnnet)
-
-	data := (*C.uchar)(unsafe.Pointer(&(img.DataPtrUint8()[0])))
-	rects := C.detectFromByte(data, C.int(img.Cols()), C.int(img.Rows()), ncnnnet, C.int(mode))
 	rectsPointer := rects.rects
 	size := int(rects.size)
 	header := &reflect.SliceHeader{

@@ -1,29 +1,12 @@
 package main
 
+import "C"
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 )
-
-func main() {
-	var err error
-
-	err = getConfig(&config)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	go uploadStats()
-
-	router := setupRouter()
-	err = router.Run(config.LocalPort)
-	if err != nil {
-		log.Println(err)
-	}
-}
 
 func setupRouter() *gin.Engine {
 	router := gin.Default()

@@ -1,7 +1,7 @@
 import React, { PureComponent } from "react";
 import PropTypes from 'prop-types'
 import { connect } from 'dva'
-import { Button, Progress, Switch } from 'antd'
+import { Button, Progress, Switch, Spin, Row, Col } from 'antd'
 import { Stage, Layer, Rect, Text } from 'react-konva';
 import Konva from 'konva';
 import KImage from '../components/KImage'
@@ -14,6 +14,7 @@ class ClassDetail extends PureComponent {
   state = {
     showFaceCount: false,
     showFaceCountBackground: true,
+    showSpinning: false,
     currentPerson: 0,
     faceCountData: {
       personCount: 0,
@@ -38,6 +39,7 @@ class ClassDetail extends PureComponent {
 
     this.setState({
       showFaceCount: true,
+      showSpinning: false,
       currentPerson: _currentPerson,
       faceCountData: {
         personCount: person_count,
@@ -48,17 +50,17 @@ class ClassDetail extends PureComponent {
         global_width: global_width,
       }
     })
-
-    console.log(this.state)
   }
 
   handleFaceCountStart = () => {
     const { classDetail } = this.props
     const { data } = classDetail
     const handleFaceCountAdd = this.handleFaceCountAdd
+    const handleFaceCountClose = this.handleFaceCountClose
 
     this.setState({
       showFaceCount: false,
+      showSpinning: true,
       currentPerson: 0,
       faceCountData: {
         personCount: 0,
@@ -72,13 +74,13 @@ class ClassDetail extends PureComponent {
 
     let ws = new WebSocket("ws://localhost:8000/face_count?class_id=" + data.class_id)
     ws.onopen = function(evt) {
-      console.log("open: " + evt.data)
+      console.log("open websocket")
     }
     ws.onclose = function(evt) {
-      console.log("close: " + evt.data)
+      console.log("close websocket")
+      handleFaceCountClose()
     }
     ws.onmessage = function(evt) {
-      console.log("message: " + evt.data)
       handleFaceCountAdd(evt.data)
     }
     ws.onerror = function(evt) {
@@ -93,10 +95,16 @@ class ClassDetail extends PureComponent {
     })
   }
 
+  handleFaceCountClose = () => {
+    this.setState({
+      showSpinning: false,
+    })
+  }
+
   render() {
     const { classDetail } = this.props
     const { data } = classDetail
-    const { faceCountData, showFaceCount, showFaceCountBackground, currentPerson } = this.state
+    const { faceCountData, showFaceCount, showFaceCountBackground, currentPerson, showSpinning } = this.state
     const content = []
     for (let key in data) {
       if ({}.hasOwnProperty.call(data, key)) {
@@ -144,20 +152,30 @@ class ClassDetail extends PureComponent {
     return (
       <Page inner>
         <div className={styles.content}>{content}</div>
-        <Button onClick={this.handleFaceCountStart}>点名</Button>
-        <Switch defaultChecked  checkedChildren="开" unCheckedChildren="关" onChange={this.handleFaceCountBackground} />
-        {showFaceCount && (
-          <div>
-            <Progress size="small" percent={Math.ceil(currentPerson * 100 / faceCountData.personCount)} />
-            <Stage width={window.innerWidth} height={imageHeight + 20}>
-              <Layer>
-                { showFaceCountBackground && <KImage src={faceImage} width={imageWidth} height={imageHeight}/> }
-                { rects }
-                { texts }
-              </Layer>
-            </Stage>
-          </div>
-        )}
+        <Row>
+          <Col lg={6} md={12}>
+            <Button onClick={this.handleFaceCountStart}>点名</Button>
+          </Col>
+          <Col lg={6} md={12}>
+            <Switch defaultChecked  checkedChildren="开" unCheckedChildren="关" onChange={this.handleFaceCountBackground} />
+          </Col>
+          <Col lg={24} md={24} style={{ marginTop: 24 }}>
+            <Spin spinning={showSpinning}>
+              {showFaceCount && (
+                <div>
+                  <Progress percent={Math.ceil(currentPerson * 100 / faceCountData.personCount)} />
+                  <Stage width={window.innerWidth} height={imageHeight + 20}>
+                    <Layer>
+                      { showFaceCountBackground && <KImage src={faceImage} width={imageWidth} height={imageHeight}/> }
+                      { rects }
+                      { texts }
+                    </Layer>
+                  </Stage>
+                </div>
+              )}
+            </Spin>
+          </Col>
+        </Row>
       </Page>
     )
   }
