@@ -2,7 +2,6 @@ import React, { PureComponent, Fragment } from 'react'
 import PropTypes from 'prop-types'
 import { connect } from 'dva'
 import { Button, Row, Form, Input } from 'antd'
-import { GlobalFooter } from 'ant-design-pro'
 import { Trans, withI18n } from '@lingui/react'
 import { setLocale } from 'utils'
 import config from 'utils/config'
@@ -23,7 +22,7 @@ class Login extends PureComponent {
       if (errors) {
         return
       }
-      
+
       dispatch({ type: 'login/login', payload: objectToFormData(values) })
     })
   }
@@ -49,6 +48,7 @@ class Login extends PureComponent {
       <Fragment>
         <div className={styles.form}>
           <div className={styles.logo}>
+            <img alt="logo" src={config.logoPath} />
             <span>{config.siteName}</span>
           </div>
           <form>
@@ -93,9 +93,6 @@ class Login extends PureComponent {
               </Button>
             </Row>
           </form>
-        </div>
-        <div className={styles.footer}>
-          <GlobalFooter links={footerLinks} copyright={config.copyright} />
         </div>
       </Fragment>
     )

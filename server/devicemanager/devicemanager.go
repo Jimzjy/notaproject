@@ -25,6 +25,7 @@ const (
 	ConfigFileName = "config.json"
 	UpdateStatsTime = 30
 	ImageFileDir = "images/"
+	Domain = "localhost"
 )
 
 var config Config
@@ -33,6 +34,7 @@ var upgrader = websocket.Upgrader{
 		return true
 	},
 }
+var standUpChannels []chan StandUpPacket
 
 // 获取设置文件信息
 func getConfig(config *Config) error {
@@ -417,10 +419,16 @@ func updateClassroomStats(c *gin.Context) (err error) {
 			return
 		}
 
+		var persons []byte
+		persons, err = json.Marshal(classroomStats.Persons)
+		if err != nil {
+			return
+		}
+
 		err = createTableItem(&ClassroomStatsTable{
 			UpdateTime: stats.UpdateTime,
 			PersonCount: classroomStats.PersonCount,
-			Persons: classroomStats.Persons,
+			Persons: string(persons),
 			ClassroomNo: *classroom.ClassroomNo,
 		})
 		if err != nil {
@@ -447,12 +455,18 @@ func sendClassroomStats(c *gin.Context) (err error) {
 		return
 	}
 
+	var persons []FaceRectangle
+	err = json.Unmarshal([]byte(classroomStatsItem.Persons), &persons)
+	if err != nil {
+		return
+	}
+
 	stats := SingleClassroomStats{
 		UpdateTime: classroomStatsItem.UpdateTime,
 		ClassroomStats: ClassroomStats{
 			ClassroomNo: classroomStatsItem.ClassroomNo,
 			PersonCount: classroomStatsItem.PersonCount,
-			Persons: classroomStatsItem.Persons,
+			Persons: persons,
 		},
 	}
 
@@ -665,7 +679,7 @@ func createStudent(c *gin.Context) (err error) {
 		return err
 	}
 	if len(faceRectTokens.Faces) < 1 {
-		c.JSON(http.StatusBadRequest, "get face from student image failed")
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "get face from student image failed"})
 		return nil
 	}
 
@@ -1103,7 +1117,7 @@ func updateCameras(c *gin.Context) (err error) {
 		return
 	}
 
-	oldCamera, err := getDevice(id)
+	oldCamera, err := getCamera(id)
 	if err != nil {
 		return
 	}
@@ -1390,13 +1404,31 @@ func faceCount(c *gin.Context) (err error) {
 	chanResp := make(chan string)
 	chanRequest := make(chan string)
 	chanPersonData := make(chan []byte)
+	var faceRecords []FaceRectToken
 
 	go handleFaceCountResp(c, chanResp, chanPersonData)
 	go handleFaceCountRequest(camera[0].CamStreamPath, class.FaceSetToken,
-		device[0].DevicePath, device[0].DevicePort, chanRequest, chanPersonData, chanResp)
+		device[0].DevicePath, device[0].DevicePort, chanRequest, chanPersonData, chanResp, faceRecords)
 
 	<- chanRequest
 	<- chanResp
+
+	var err2 error
+	faceRecordsBytes, err2 := json.Marshal(faceRecords)
+	if err2 != nil {
+		log.Println(err2)
+		return
+	}
+
+	faceCountRecord := FaceCountRecord{
+		FaceRectTokens: string(faceRecordsBytes),
+		ClassID: id,
+	}
+	err2 = createTableItem(&faceCountRecord)
+	if err2 != nil {
+		log.Println(err2)
+		return
+	}
 	return
 }
 
@@ -1417,7 +1449,7 @@ func handleFaceCountResp(c *gin.Context, chanResp chan string, chanPersonData ch
 		for {
 			_, _, err := conn.ReadMessage()
 			if err != nil {
-				log.Println("read from user:", err)
+				log.Println("error from read from user:", err)
 				break
 			}
 		}
@@ -1431,13 +1463,13 @@ func handleFaceCountResp(c *gin.Context, chanResp chan string, chanPersonData ch
 			if ok {
 				err = conn.WriteMessage(websocket.TextMessage, personData)
 				if err != nil {
-					log.Println("write to user:", err)
+					log.Println("error from write to user:", err)
 					return
 				}
 			} else {
 				err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 				if err != nil {
-					log.Println("write to user", err)
+					log.Println("error from write to user", err)
 					return
 				}
 				return
@@ -1446,7 +1478,7 @@ func handleFaceCountResp(c *gin.Context, chanResp chan string, chanPersonData ch
 	}
 }
 
-func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort string, chanRequest chan string, chanPersonData chan []byte, chanResp chan string) {
+func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort string, chanRequest chan string, chanPersonData chan []byte, chanResp chan string, faceRecords []FaceRectToken) {
 	defer close(chanRequest)
 	defer close(chanPersonData)
 
@@ -1473,7 +1505,7 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 			default:
 				_, data, err := conn.ReadMessage()
 				if err != nil {
-					log.Println("read from embedded:", err)
+					log.Println("error from read from embedded:", err)
 					return
 				}
 
@@ -1483,20 +1515,22 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 					continue
 				}
 
-				if personData.Token == "" {
+				if personData.Face.FaceToken == "" {
 					chanPersonData <- data
 					continue
 				}
 
 				var student *Student
-				student, err = getStudentByFaceToken(personData.Token)
+				student, err = getStudentByFaceToken(personData.Face.FaceToken)
 				if err != nil {
 					log.Println(err)
 					chanPersonData <- data
 					continue
 				}
 
-				personData.Token = *student.StudentNo
+				personData.Face.FaceToken = *student.StudentNo
+				faceRecords = append(faceRecords, FaceRectToken{FaceRectangle: personData.Face.FaceRectangle, FaceToken: personData.Face.FaceToken})
+
 				data2, err := json.Marshal(personData)
 				if err != nil {
 					log.Println(err)
@@ -1512,12 +1546,194 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 	<- done
 }
 
+func standUp(c *gin.Context) (err error) {
+	classID := c.Query("class_id")
+
+	id, err := strconv.Atoi(classID)
+	if err != nil {
+		return
+	}
+	faceCountRecord, err := getFaceCountRecord(id)
+	if err != nil {
+		return
+	}
+
+	var faceRectNos []FaceRectToken
+	err = json.Unmarshal([]byte(faceCountRecord.FaceRectTokens), &faceRectNos)
+	if err != nil {
+		return
+	}
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	standUpChannels = append(standUpChannels, make(chan StandUpPacket))
+	readChannelIndex := len(standUpChannels) - 1
+	standUpChannels = append(standUpChannels, make(chan StandUpPacket))
+	writeChannelIndex := len(standUpChannels) - 1
+
+	standUpStatusTable := StandUpStatusTable{
+		ClassID: id,
+		WReadMWriteIndex: readChannelIndex,
+		WWriteMReadIndex: writeChannelIndex,
+	}
+	err = createTableItem(&standUpStatusTable)
+	if err != nil {
+		log.Println(err)
+	}
+
+	done := make(chan string)
+	go func() {
+		defer close(done)
+
+		var standUpPacket StandUpPacket
+		for {
+			_, data, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("error from read from teacher web client:", err)
+				break
+			}
+
+			err = json.Unmarshal(data, &standUpPacket)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			standUpChannels[writeChannelIndex] <- standUpPacket
+		}
+	}()
+
+	for {
+		select {
+		case <-done:
+			err = deleteTableItem(&standUpStatusTable)
+			if err != nil {
+				log.Println(err)
+			}
+			close(standUpChannels[readChannelIndex])
+			close(standUpChannels[writeChannelIndex])
+			return
+		case standUpPacket, ok := <-standUpChannels[readChannelIndex]:
+			if ok {
+				var data []byte
+				data, err = json.Marshal(standUpPacket)
+				if err != nil {
+					continue
+				}
+
+				err = conn.WriteMessage(websocket.TextMessage, data)
+				if err != nil {
+					log.Println("error from write to teacher web client", err)
+					return
+				}
+			} else {
+				return
+			}
+		}
+	}
+}
+
+func standUpMobile(c *gin.Context) (err error) {
+	classID := c.Query("class_id")
+	readChannelIndex := c.Query("read_channel_index")
+	writeChannelIndex := c.Query("write_channel_index")
+
+	if classID == "" {
+		err = fmt.Errorf("no class id")
+		return
+	}
+
+	var readIndex, writeIndex int
+	if readChannelIndex == "" || writeChannelIndex == "" {
+		var id int
+		id, err = strconv.Atoi(classID)
+		if err != nil {
+			return
+		}
+		standUpStatus, err := getStandUpStatus(id)
+		if err != nil {
+			return
+		}
+		if standUpStatus.ID != 0 {
+			err = fmt.Errorf("no read or write channel index")
+			return
+		}
+
+		readIndex = standUpStatus.WWriteMReadIndex
+		writeIndex = standUpStatus.WReadMWriteIndex
+	} else {
+		readIndex, err = strconv.Atoi(readChannelIndex)
+		if err != nil {
+			return
+		}
+		writeIndex, err = strconv.Atoi(writeChannelIndex)
+		if err != nil {
+			return
+		}
+	}
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	done := make(chan string)
+	go func() {
+		defer close(done)
+
+		var standUpPacket StandUpPacket
+		for {
+			_, data, err := conn.ReadMessage()
+			if err != nil {
+				log.Println("error from read from teacher mobile client:", err)
+				break
+			}
+
+			err = json.Unmarshal(data, &standUpPacket)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			standUpChannels[writeIndex] <- standUpPacket
+		}
+	}()
+
+	for {
+		select {
+		case <-done:
+			return
+		case standUpPacket, ok := <-standUpChannels[readIndex]:
+			if ok {
+				var data []byte
+				data, err = json.Marshal(standUpPacket)
+				if err != nil {
+					continue
+				}
+
+				err = conn.WriteMessage(websocket.TextMessage, data)
+				if err != nil {
+					log.Println("error from write to teacher mobile client", err)
+					return
+				}
+			} else {
+				return
+			}
+		}
+	}
+}
+
 func adminLogin(c *gin.Context) (err error) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
 
 	if username == password && (username == Admin || username == Developer) {
-		c.SetCookie("admin_token", username, 36000, "/", "localhost", false, true)
+		c.SetCookie("admin_token", username, 36000, "/", Domain, false, true)
 	} else {
 		c.JSON(http.StatusBadRequest, JsonMessage{Message: "Auth failed"})
 		return
@@ -1541,7 +1757,7 @@ func sendAdminInfo(c *gin.Context) (err error) {
 }
 
 func adminLogout(c *gin.Context) (err error) {
-	c.SetCookie("admin_token", "", -1, "/", "localhost", false, true)
+	c.SetCookie("admin_token", "", -1, "/", Domain, false, true)
 	return
 }
 

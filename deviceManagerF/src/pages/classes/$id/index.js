@@ -28,12 +28,12 @@ class ClassDetail extends PureComponent {
 
   handleFaceCountAdd = (data) => {
     const json = JSON.parse(data)
-    const { detected_data, face_token, global_width, global_height, person_count, image_url } = json
+    const { face, global_width, global_height, person_count, image_url } = json
 
     let _positionData = this.state.faceCountData.positionData
-    _positionData.push(detected_data)
+    _positionData.push(face.face_rectangle)
     let _studentNos = this.state.faceCountData.studentNos
-    _studentNos.push(face_token)
+    _studentNos.push(face.face_token)
 
     let _currentPerson = this.state.currentPerson + 1
 
@@ -129,10 +129,10 @@ class ClassDetail extends PureComponent {
       rects.push(
         <Rect
           key={index}
-          x={positionData[index].x0 * imageScale} 
-          y={positionData[index].y0 * imageScale}
-          width={(positionData[index].x1 - positionData[index].x0) * imageScale}
-          height={(positionData[index].y1 - positionData[index].y0) * imageScale}
+          x={positionData[index].left * imageScale} 
+          y={positionData[index].top * imageScale}
+          width={positionData[index].width * imageScale}
+          height={positionData[index].height * imageScale}
           stroke={'#27F5F5'}
         />
       )
@@ -141,9 +141,9 @@ class ClassDetail extends PureComponent {
         <Text 
           key={index}
           text={studentNos[index]} 
-          fontSize={imageWidth / 50} 
-          x={positionData[index].x0 * imageScale} 
-          y={positionData[index].y0 * imageScale} 
+          fontSize={imageWidth / 70} 
+          x={positionData[index].left * imageScale} 
+          y={positionData[index].top * imageScale} 
           fill={'#6CC4C4'}
         />
       )

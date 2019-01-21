@@ -2,26 +2,67 @@ package main
 
 import "time"
 
-type DetectedData struct {
-	X0 int `json:"x0"`
-	Y0 int `json:"y0"`
-	X1 int `json:"x1"`
-	Y1 int `json:"y1"`
+type FaceRectangle struct {
+	Top int `json:"top"`
+	Left int `json:"left"`
+	Width int `json:"width"`
+	Height int `json:"height"`
 }
 
 type PersonData struct {
-	DetectedData DetectedData `json:"detected_data"`
-	Token string `json:"face_token"`
+	Face FaceAnalyzeResult `json:"face"`
 	GlobalWidth float64 `json:"global_width"`
 	GlobalHeight float64 `json:"global_height"`
 	PersonCount int `json:"person_count"`
 	ImageUrl string `json:"image_url"`
 }
 
-type DetectedImage struct {
-	DetectedData DetectedData
-	Data []byte
+type FaceDetectResults struct {
+	Faces []FaceAnalyzeResult `json:"faces"`
 }
+
+type FaceAnalyzeResult struct {
+	Attributes Attributes `json:"attributes"`
+	FaceRectangle FaceRectangle `json:"face_rectangle"`
+	FaceToken string `json:"face_token"`
+}
+
+type Attributes struct {
+	Emotion Emotion `json:"emotion"`
+	EyesStatus EyesStatus `json:"eyes_status"`
+	HeadPose HeadPose `json:"head_pose"`
+}
+
+type Emotion struct {
+	Sadness float32 `json:"sadness"`
+	Neutral float32 `json:"neutral"`
+	Disgust float32 `json:"disgust"`
+	Anger float32 `json:"anger"`
+	Surprise float32 `json:"surprise"`
+	Fear float32 `json:"fear"`
+	Happiness float32 `json:"happiness"`
+}
+
+type EyeStatus struct {
+	NoGlassEyeClose float32 `json:"no_glass_eye_close"`
+	NormalGlassEyeClose float32 `json:"normal_glass_eye_close"`
+}
+
+type EyesStatus struct {
+	LeftEyeStatus EyeStatus `json:"left_eye_status"`
+	RightEyeStatus EyeStatus `json:"right_eye_status"`
+}
+
+type HeadPose struct {
+	YawAngle float32 `json:"yaw_angle"`
+	PitchAngle float32 `json:"pitch_angle"`
+	RollAngle float32 `json:"roll_angle"`
+}
+
+//type DetectedImage struct {
+//	FaceRectangle FaceRectangle
+//	Data []byte
+//}
 
 type SearchFaceResult struct {
 	Confidence float32 `json:"confidence"`
@@ -46,12 +87,14 @@ type Config struct {
 	ApiKey string `json:"api_key"`
 	ApiSecret string `json:"api_secret"`
 	SearchFaceUrl string `json:"search_face_url"`
-	DetectSkeletonUrl string `json:"detect_skeleton_url"`
+	DetectFaceUrl string `json:"detect_face_url"`
+	AnalyzeFaceUrl string `json:"analyze_face_url"`
 	DetectInterval int `json:"detect_interval"`
 	FaceDetectParam string `json:"face_detect_param"`
 	FaceDetectBin string `json:"face_detect_bin"`
 	BodyDetectParam string `json:"body_detect_param"`
 	BodyDetectBin string `json:"body_detect_bin"`
+	Qps int `json:"qps"`
 	Classrooms []Classroom `json:"classrooms"`
 }
 
@@ -63,7 +106,7 @@ type Classroom struct {
 type ClassroomStat struct {
 	ClassroomNo string `json:"classroom_no"`
 	PersonCount int `json:"person_count"`
-	Persons []DetectedData `json:"persons"`
+	Persons []FaceRectangle `json:"persons"`
 }
 
 type SystemStats struct {

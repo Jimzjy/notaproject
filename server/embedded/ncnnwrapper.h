@@ -5,10 +5,10 @@
 
 typedef struct Rect
 {
-    int x0;
-    int y0;
-    int x1;
-    int y1;
+    int top;
+    int left;
+    int width;
+    int height;
 } Rect;
 
 typedef struct Rects

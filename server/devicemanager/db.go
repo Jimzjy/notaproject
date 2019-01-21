@@ -32,6 +32,8 @@ func init() {
 	db.AutoMigrate(&DeviceStatsTable{})
 	db.AutoMigrate(&ClassroomStatsTable{})
 	db.AutoMigrate(&DeviceManagerSystemStats{})
+	db.AutoMigrate(&FaceCountRecord{})
+	db.AutoMigrate(&StandUpStatusTable{})
 }
 
 func getAllClasses() ([]Class, error) {
@@ -469,6 +471,35 @@ func getDeviceCameraCount() (devices int, cameras int, err error) {
 
 	db.Table("devices").Count(&devices)
 	db.Table("cameras").Count(&cameras)
+	return
+}
+
+func getFaceCountRecord(classID int) (faceCountRecord *FaceCountRecord, err error) {
+	faceCountRecord = &FaceCountRecord{}
+
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Last(&faceCountRecord, "class_id = ?", classID)
+	if faceCountRecord.ID == 0 {
+		err = fmt.Errorf("can not find faceCountRecord for classID %v", classID)
+	}
+	return
+}
+
+func getStandUpStatus(classID int) (standUpStatus *StandUpStatusTable, err error) {
+	standUpStatus = &StandUpStatusTable{}
+
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Last(&standUpStatus, "class_id = ?", classID)
 	return
 }
 

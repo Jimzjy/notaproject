@@ -52,10 +52,10 @@ Rects detectFromByte(unsigned char* data, int cols, int rows, Ncnnnet net, int m
         }
 
         Rect rect;
-        rect.x0 = values[2] * img_w;
-        rect.y0 = values[3] * img_h;
-        rect.x1 = values[4] * img_w;
-        rect.y1 = values[5] * img_h;
+        rect.top = values[2] * img_w;
+        rect.left = values[3] * img_h;
+        rect.width = values[4] * img_w - rect.left;
+        rect.height = values[5] * img_h - rect.top;
 
         vrects.push_back(rect);
 

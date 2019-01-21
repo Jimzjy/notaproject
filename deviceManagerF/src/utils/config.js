@@ -1,7 +1,7 @@
 module.exports = {
-  siteName: '系统管理',
+  siteName: 'NOTAPROJECT',
   copyright: '',
-  logoPath: '',
+  logoPath: '/logo.svg',
   apiPrefix: '/api',
   fixedHeader: true, // sticky primary layout header
 

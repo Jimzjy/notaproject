@@ -12,6 +12,12 @@ const (
 	Developer = "developer"
 )
 
+type FaceCountRecord struct {
+	gorm.Model
+	ClassID int
+	FaceRectTokens string
+}
+
 type FaceRectTokens struct {
 	Faces []FaceRectToken `json:"faces"`
 }
@@ -29,16 +35,64 @@ type FaceRectangle struct {
 }
 
 type PersonData struct {
-	DetectedData DetectedData `json:"detected_data"`
-	Token string `json:"face_token"`
+	Face FaceAnalyzeResult `json:"face"`
 	GlobalWidth float64 `json:"global_width"`
 	GlobalHeight float64 `json:"global_height"`
 	PersonCount int `json:"person_count"`
 	ImageUrl string `json:"image_url"`
 }
 
+type FaceAnalyzeResult struct {
+	Attributes Attributes `json:"attributes"`
+	FaceRectangle FaceRectangle `json:"face_rectangle"`
+	FaceToken string `json:"face_token"`
+}
+
+type Attributes struct {
+	Emotion Emotion `json:"emotion"`
+	EyesStatus EyesStatus `json:"eyes_status"`
+	HeadPose HeadPose `json:"head_pose"`
+}
+
+type Emotion struct {
+	Sadness float32 `json:"sadness"`
+	Neutral float32 `json:"neutral"`
+	Disgust float32 `json:"disgust"`
+	Anger float32 `json:"anger"`
+	Surprise float32 `json:"surprise"`
+	Fear float32 `json:"fear"`
+	Happiness float32 `json:"happiness"`
+}
+
+type EyeStatus struct {
+	NoGlassEyeClose float32 `json:"no_glass_eye_close"`
+	NormalGlassEyeClose float32 `json:"normal_glass_eye_close"`
+}
+
+type EyesStatus struct {
+	LeftEyeStatus EyeStatus `json:"left_eye_status"`
+	RightEyeStatus EyeStatus `json:"right_eye_status"`
+}
+
+type HeadPose struct {
+	YawAngle float32 `json:"yaw_angle"`
+	PitchAngle float32 `json:"pitch_angle"`
+	RollAngle float32 `json:"roll_angle"`
+}
+
 type JsonMessage struct {
 	Message string `json:"message"`
+}
+
+type StandUpPacket struct {
+
+}
+
+type StandUpStatusTable struct {
+	gorm.Model
+	ClassID int
+	WReadMWriteIndex int
+	WWriteMReadIndex int
 }
 
 type Config struct {
@@ -181,7 +235,7 @@ type Classroom struct {
 type ClassroomStats struct {
 	ClassroomNo string `json:"classroom_no"`
 	PersonCount int `json:"person_count"`
-	Persons []DetectedData `json:"persons"`
+	Persons []FaceRectangle `json:"persons"`
 }
 
 type SystemStats struct {
@@ -193,13 +247,6 @@ type Stats struct {
 	UpdateTime time.Time `json:"update_time"`
 	SystemStats SystemStats `json:"system_stats"`
 	Classrooms []ClassroomStats `json:"classrooms"`
-}
-
-type DetectedData struct {
-	X0 int `json:"x0"`
-	Y0 int `json:"y0"`
-	X1 int `json:"x1"`
-	Y1 int `json:"y1"`
 }
 
 type DeviceStatsTable struct {
@@ -214,7 +261,7 @@ type ClassroomStatsTable struct {
 	gorm.Model
 	UpdateTime time.Time
 	PersonCount int
-	Persons []DetectedData
+	Persons string
 	ClassroomNo string
 }
 

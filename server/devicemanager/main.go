@@ -57,19 +57,25 @@ func setupRouter() *gin.Engine {
 		}
 	})
 
-	//// 人脸
-	//router.POST("/detect_face", func(c *gin.Context) {
-	//	if err := detectFace(c); err != nil {
-	//		log.Println(err)
-	//		c.JSON(http.StatusInternalServerError, JsonMessage{Message: "detect face failed"})
-	//	}
-	//})
-
 	// 点名
 	router.GET("/face_count", func(c *gin.Context) {
 		if err := faceCount(c); err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "face count error"})
+		}
+	})
+
+	// 上课
+	router.GET("/stand_up", func(c *gin.Context) {
+		if err := standUp(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "stand up start error"})
+		}
+	})
+	router.GET("/stand_up_mobile", func(c *gin.Context) {
+		if err := standUpMobile(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "stand up mobile start error"})
 		}
 	})
 

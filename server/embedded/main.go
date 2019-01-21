@@ -15,6 +15,14 @@ func setupRouter() *gin.Engine {
 	// 人脸识别
 	router.GET("/face_search", searchFace)
 
+	// 状态
+	router.GET("person_status", func(c *gin.Context) {
+		if err := sendPersonStatus(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send person status error"})
+		}
+	})
+
 	// 设置
 	router.GET("/config", func(c *gin.Context) {
 		c.JSON(http.StatusOK, config)

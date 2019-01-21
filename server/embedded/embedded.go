@@ -10,12 +10,11 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"gocv.io/x/gocv"
-	"image"
 	"io/ioutil"
 	"log"
-	"math"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strconv"
 	"time"
@@ -114,6 +113,46 @@ func setConfig(c *gin.Context) error {
 	return nil
 }
 
+func sendPersonStatus(c *gin.Context) (err error) {
+	camStreamPath := c.PostForm("cam_stream_path")
+
+	_, faceDetectResults, err := getFacePPDetect(camStreamPath, true)
+	if err != nil {
+		return
+	}
+
+	if len(faceDetectResults.Faces) <= 5 {
+		c.JSON(http.StatusOK, faceDetectResults)
+	} else {
+		var body []byte
+		var err2 error
+
+		for i := 5; i < len(faceDetectResults.Faces); i++ {
+			body, err2 = sendPostForm(url.Values{
+				"api_key": {config.ApiKey},
+				"api_secret": {config.ApiSecret},
+				"face_token": {faceDetectResults.Faces[i].FaceToken},
+			}, config.AnalyzeFaceUrl)
+			if err2 != nil {
+				log.Println(err2)
+				continue
+			}
+
+			var faceAnalyzeResult FaceAnalyzeResult
+			err2 = json.Unmarshal(body, &faceAnalyzeResult)
+			if err2 != nil {
+				log.Println(err2)
+				continue
+			}
+
+			faceDetectResults.Faces[i].Attributes = faceAnalyzeResult.Attributes
+		}
+
+		c.JSON(http.StatusOK, faceDetectResults)
+	}
+	return
+}
+
 func searchFace(c *gin.Context) {
 	var err error
 
@@ -134,7 +173,7 @@ func searchFace(c *gin.Context) {
 		for {
 			_, _, err = conn.ReadMessage()
 			if err != nil {
-				log.Println("read from deviceManager:", err)
+				log.Println("error from read from deviceManager:", err)
 				break
 			}
 		}
@@ -157,13 +196,13 @@ func searchFace(c *gin.Context) {
 
 				err = conn.WriteMessage(websocket.TextMessage, data)
 				if err != nil {
-					log.Println("write to deviceManager", err)
+					log.Println("error from write to deviceManager", err)
 					return
 				}
 			} else {
 				err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 				if err != nil {
-					log.Println("write to deviceManager", err)
+					log.Println("error from write to deviceManager", err)
 					return
 				}
 				return
@@ -176,7 +215,7 @@ func getSearchData(camStreamPath, faceSetToken string, chPersonData chan PersonD
 	var err error
 	defer close(chPersonData)
 
-	gImage, detectedImage, err := getDetectedImage(camStreamPath, FaceDetect)
+	gImage, faceDetectResults, err := getFacePPDetect(camStreamPath, true)
 	if err != nil {
 		log.Println(err)
 		return
@@ -196,56 +235,69 @@ func getSearchData(camStreamPath, faceSetToken string, chPersonData chan PersonD
 		return
 	}
 
+	personCount := len(faceDetectResults.Faces)
 	personData := PersonData{
-		PersonCount: len(detectedImage),
+		PersonCount: personCount,
 		ImageUrl: jsonMessage.Message,
 		GlobalWidth: globalWidth,
 		GlobalHeight: globalHeight,
 	}
 
-	params := map[string]string{
-		"api_key": config.ApiKey,
-		"api_secret": config.ApiSecret,
-		"faceset_token": faceSetToken,
-	}
-	for i := 0; i < len(detectedImage); i++ {
-		_image := detectedImage[i]
+	chPostCtrl := make(chan string, config.Qps)
+	count := 0
+	for _, v := range faceDetectResults.Faces {
 		_personData := personData
 
-		body, err = fileUploadRequest(config.SearchFaceUrl, params,
-			"image_file", _image.Data, "image.jpg")
-		if err != nil {
-			log.Println(err)
-			if err.Error() != "response not ok" {
-				return
-			} else {
-				_personData.DetectedData = _image.DetectedData
-				chPersonData <- _personData
-				continue
-			}
-		}
+		go sendFacePostForm(faceSetToken, v, _personData, chPersonData, chPostCtrl, &count)
+	}
 
-		var searchFaceResponse SearchFaceResults
-		err = json.Unmarshal(body, &searchFaceResponse)
-		if err != nil {
-			log.Println(err)
+	for {
+		if count >= personCount {
 			return
 		}
-		results := searchFaceResponse.Results
-		if len(results) > 0 {
-			confidence := results[0].Confidence
-			if confidence > 40 {
-				_personData.DetectedData = _image.DetectedData
-				_personData.Token = results[0].FaceToken
-				chPersonData <- _personData
-			} else {
-				_personData.DetectedData = _image.DetectedData
-				chPersonData <- _personData
-			}
+	}
+}
+
+func sendFacePostForm(faceSetToken string, face FaceAnalyzeResult, _personData PersonData, chPersonData chan PersonData, chPostCtrl chan string, count *int) {
+	chPostCtrl <- ""
+	defer func() {
+		*count += 1
+		<- chPostCtrl
+	}()
+
+	body, err := sendPostForm(url.Values{
+		"api_key": {config.ApiKey},
+		"api_secret": {config.ApiSecret},
+		"faceset_token": {faceSetToken},
+		"face_token": {face.FaceToken},
+	}, config.SearchFaceUrl)
+	if err != nil {
+		log.Println(err)
+		_personData.Face.FaceRectangle = face.FaceRectangle
+		chPersonData <- _personData
+		return
+	}
+
+	var searchFaceResponse SearchFaceResults
+	err = json.Unmarshal(body, &searchFaceResponse)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	results := searchFaceResponse.Results
+	if len(results) > 0 {
+		confidence := results[0].Confidence
+		if confidence > 70 {
+			_personData.Face.FaceToken = results[0].FaceToken
+			_personData.Face.FaceRectangle = face.FaceRectangle
+			chPersonData <- _personData
 		} else {
-			_personData.DetectedData = _image.DetectedData
+			_personData.Face.FaceRectangle = face.FaceRectangle
 			chPersonData <- _personData
 		}
+	} else {
+		_personData.Face.FaceRectangle = face.FaceRectangle
+		chPersonData <- _personData
 	}
 }
 
@@ -266,7 +318,7 @@ func getCameraImage(camStreamPath string, img *gocv.Mat) error {
 	return nil
 }
 
-func getDetectedImage(camStreamPath string, mode int) (gImage []byte, detectedImage []DetectedImage, err error) {
+func getFacePPDetect(camStreamPath string, getGImage bool) (gImage []byte, faceDetectResults FaceDetectResults, err error) {
 	img := gocv.NewMat()
 	defer img.Close()
 	err = getCameraImage(camStreamPath, &img)
@@ -274,43 +326,31 @@ func getDetectedImage(camStreamPath string, mode int) (gImage []byte, detectedIm
 		return
 	}
 
-	detectedData, err := getDetectedData(img, mode)
+	if getGImage {
+		gImage, err = gocv.IMEncode(".jpg", img)
+		if err != nil {
+			return
+		}
+	}
+
+	faceDetectBody, err := fileUploadRequest(config.DetectFaceUrl, map[string]string{
+		"api_key": config.ApiKey,
+		"api_secret": config.ApiSecret,
+		"return_attributes": "headpose,eyestatus,emotion",
+	}, "image_file", gImage, "image.jpg")
 	if err != nil {
 		return
 	}
 
-	detectedImage = make([]DetectedImage, len(detectedData))
-	for i := 0; i < len(detectedData); i++  {
-		rect := detectedData[i]
-		var _img gocv.Mat
-		_img, err = img.FromRect(image.Rect(rect.X0, rect.Y0, rect.X1, rect.Y1))
-		if err != nil {
-			return
-		}
-		if rect.X1 - rect.X0 < 80 {
-			fx := math.Ceil(80 / float64(rect.X1 - rect.X0))
-			gocv.Resize(_img, &_img, image.Pt(0, 0), fx, fx, gocv.InterpolationArea)
-		}
-
-		detectedImage[i].Data, err = gocv.IMEncode(".jpg", _img)
-		if err != nil {
-			return
-		}
-		err = _img.Close()
-		if err != nil {
-			log.Println(err)
-		}
-		detectedImage[i].DetectedData = rect
-	}
-
-	gImage, err = gocv.IMEncode(".jpg", img)
+	err = json.Unmarshal(faceDetectBody, &faceDetectResults)
 	if err != nil {
 		return
 	}
+
 	return
 }
 
-func getDetectedData(img gocv.Mat, mode int) ([]DetectedData, error) {
+func getDetectedData(img gocv.Mat, mode int) ([]FaceRectangle, error) {
 	bias := 0
 
 	data := (*C.uchar)(unsafe.Pointer(&(img.DataPtrUint8()[0])))
@@ -332,11 +372,11 @@ func getDetectedData(img gocv.Mat, mode int) ([]DetectedData, error) {
 	}
 	rectsSlice := *(*[]C.Rect)(unsafe.Pointer(header))
 
-	detectedData := make([]DetectedData, len(rectsSlice) - 1)
+	detectedData := make([]FaceRectangle, len(rectsSlice) - 1)
 
 	for i := 1; i < len(rectsSlice); i++ {
 		rect := rectsSlice[i]
-		detectedData[i-1] = DetectedData{int(rect.x0) - bias, int(rect.y0) - bias, int(rect.x1) + bias, int(rect.y1) + bias}
+		detectedData[i-1] = FaceRectangle{int(rect.top) - bias, int(rect.left) - bias, int(rect.width) + bias, int(rect.height) + bias}
 		//fmt.Println(detectedData[i-1])
 	}
 
@@ -414,7 +454,7 @@ func uploadStatsRequest() error {
 			return err
 		}
 
-		var data []DetectedData
+		var data []FaceRectangle
 		data, err = getDetectedData(img, BodyDetect)
 		if err != nil {
 			return err
@@ -460,7 +500,7 @@ func uploadStatsRequest() error {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf(response.Status)
+		return fmt.Errorf("response not ok")
 	}
 
 	//if response.StatusCode != http.StatusOK {
@@ -497,4 +537,23 @@ func getFloatPrecision(number float64, p string) float64 {
 	}
 
 	return numberP
+}
+
+func sendPostForm(params url.Values, url string) (body []byte, err error) {
+	response, err := http.PostForm(url, params)
+	if err != nil {
+		return
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		err = fmt.Errorf("response not ok")
+		return
+	}
+
+	body, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		return
+	}
+	return
 }
