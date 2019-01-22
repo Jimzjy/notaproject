@@ -52,14 +52,14 @@ Rects detectFromByte(unsigned char* data, int cols, int rows, Ncnnnet net, int m
         }
 
         Rect rect;
-        rect.top = values[2] * img_w;
-        rect.left = values[3] * img_h;
+        rect.left = values[2] * img_w;
+        rect.top = values[3] * img_h;
         rect.width = values[4] * img_w - rect.left;
         rect.height = values[5] * img_h - rect.top;
 
         vrects.push_back(rect);
 
-        //fprintf(stdout, "x %d y %d x1 %d y1 %d\n", rect.x0, rect.y0, rect.x1, rect.y1);
+        //fprintf(stdout, "x %f y %f x1 %f y1 %f\n", values[2] * img_w, values[3] * img_h, values[4] * img_w, values[5] * img_h);
         //fprintf(stdout, "p: %f\n", values[1]);
     }
     Rects rects = {vrects.size(), &vrects[0]};

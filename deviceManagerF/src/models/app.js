@@ -9,10 +9,10 @@ import { CANCEL_REQUEST_MESSAGE } from 'utils/constant'
 import config from 'config'
 import api from 'api'
 
-const { logoutAdmin, queryAdminInfo } = api
+const { logoutUser, queryUserInfo } = api
 
 const UserPermission = {
-  DEFAULT: {
+  ADMIN: {
     visit: [
       '1',
       '5',
@@ -30,10 +30,11 @@ const UserPermission = {
       '621',
       '631',
     ],
-    role: ROLE_TYPE.DEFAULT,
+    role: ROLE_TYPE.ADMIN,
   },
-  DEVELOPER: {
-    role: ROLE_TYPE.DEVELOPER,
+  TEACHER: {
+    visit: ['7', '71'],
+    role: ROLE_TYPE.TEACHER,
   },
 }
 
@@ -91,28 +92,33 @@ export default {
   },
   effects: {
     *query({ payload }, { call, put, select }) {
-      const { success, user } = yield call(queryAdminInfo, payload)
+      const { success, user } = yield call(queryUserInfo, payload)
       const { locationPathname } = yield select(_ => _.app)
 
       if (success && user) {
         const list = ROUTE_LIST
         let permissions = {}
         let routeList = list
-        if (user.permissions === UserPermission.DEVELOPER.role) {
-          permissions.visit = list.map(item => item.id)
-        } else {
-          permissions.visit = UserPermission.DEFAULT.visit
-          routeList = list.filter(item => {
-            const cases = [
-              permissions.visit.includes(item.id),
-              item.mpid
-                ? permissions.visit.includes(item.mpid) || item.mpid === '-1'
-                : true,
-              item.bpid ? permissions.visit.includes(item.bpid) : true,
-            ]
-            return cases.every(_ => _)
-          })
+        switch (user.permissions) {
+          case UserPermission.ADMIN.role:
+            permissions.visit = UserPermission.ADMIN.visit
+            break
+          case UserPermission.TEACHER.role:
+            permissions.visit = UserPermission.TEACHER.visit
+            break
+          default:
+            permissions.visit = UserPermission.ADMIN.visit
         }
+        routeList = list.filter(item => {
+          const cases = [
+            permissions.visit.includes(item.id),
+            item.mpid
+              ? permissions.visit.includes(item.mpid) || item.mpid === '-1'
+              : true,
+            item.bpid ? permissions.visit.includes(item.bpid) : true,
+          ]
+          return cases.every(_ => _)
+        })
         yield put({
           type: 'updateState',
           payload: {
@@ -137,7 +143,7 @@ export default {
     },
 
     *signOut({ payload }, { call, put }) {
-      const data = yield call(logoutAdmin)
+      const data = yield call(logoutUser)
       if (data.success) {
         yield put({
           type: 'updateState',

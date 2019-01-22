@@ -1,6 +1,6 @@
 export const ROLE_TYPE = {
-  DEFAULT: 'admin',
-  DEVELOPER: 'developer',
+  ADMIN: 'admin',
+  TEACHER: 'teacher',
 }
 
 export const CANCEL_REQUEST_MESSAGE = 'cancle request'
@@ -128,5 +128,20 @@ export const ROUTE_LIST = [
     name: 'Teacher Detail',
     zhName: '教师详情',
     route: '/teachers/:no',
+  },
+  {
+    id: '7',
+    icon: 'experiment',
+    name: 'StandUp',
+    zhName: '上课',
+    route: '/standup',
+  },
+  {
+    id: '71',
+    breadcrumbParentId: '7',
+    menuParentId: '-1',
+    name: 'Standup Detail',
+    zhName: '上课详情',
+    route: '/standup/:id',
   },
 ]

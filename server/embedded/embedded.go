@@ -116,7 +116,7 @@ func setConfig(c *gin.Context) error {
 func sendPersonStatus(c *gin.Context) (err error) {
 	camStreamPath := c.PostForm("cam_stream_path")
 
-	_, faceDetectResults, err := getFacePPDetect(camStreamPath, true)
+	_, faceDetectResults, err := getFacePPDetect(camStreamPath, false)
 	if err != nil {
 		return
 	}

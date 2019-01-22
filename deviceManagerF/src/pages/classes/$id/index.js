@@ -182,7 +182,7 @@ class ClassDetail extends PureComponent {
 }
 
 ClassDetail.protoTypes = {
-  studentDetail: PropTypes.object,
+  classDetail: PropTypes.object,
 }
 
 export default ClassDetail

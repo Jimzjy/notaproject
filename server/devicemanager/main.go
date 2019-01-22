@@ -78,6 +78,12 @@ func setupRouter() *gin.Engine {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "stand up mobile start error"})
 		}
 	})
+	router.POST("/stand_up_classes", func(c *gin.Context) {
+		if err := standUpClasses(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send stand up classes error"})
+		}
+	})
 
 	// 教室状态
 	router.POST("/classroom_stats", func(c *gin.Context) {
@@ -158,7 +164,7 @@ func setupRouter() *gin.Engine {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send teacher error"})
 		}
 	})
-	router.PATCH("/teachers/:id", func(c *gin.Context) {
+	router.PATCH("/teachers", func(c *gin.Context) {
 		if err := updateTeacher(c); err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "update teacher error"})
@@ -233,19 +239,19 @@ func setupRouter() *gin.Engine {
 		}
 	})
 
-	// 管理员
-	router.POST("/admin/login", func(c *gin.Context) {
-		if err := adminLogin(c); err != nil {
+	// 用户
+	router.POST("/user/login", func(c *gin.Context) {
+		if err := userLogin(c); err != nil {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "user login error"})
 		}
 	})
-	router.GET("/admin", func(c *gin.Context) {
-		if err := sendAdminInfo(c); err != nil {
+	router.GET("/user", func(c *gin.Context) {
+		if err := sendUserInfo(c); err != nil {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send userInfo error"})
 		}
 	})
-	router.GET("/admin/logout", func(c *gin.Context) {
-		if err := adminLogout(c); err != nil {
+	router.GET("/user/logout", func(c *gin.Context) {
+		if err := userLogout(c); err != nil {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "user logout error"})
 		}
 	})

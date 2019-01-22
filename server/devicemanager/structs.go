@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	Admin = "admin"
-	Developer = "developer"
+	AdminPermission = "admin"
+	TeacherPermission = "teacher"
 )
 
 type FaceCountRecord struct {
@@ -40,6 +40,10 @@ type PersonData struct {
 	GlobalHeight float64 `json:"global_height"`
 	PersonCount int `json:"person_count"`
 	ImageUrl string `json:"image_url"`
+}
+
+type FaceDetectResults struct {
+	Faces []FaceAnalyzeResult `json:"faces"`
 }
 
 type FaceAnalyzeResult struct {
@@ -85,14 +89,36 @@ type JsonMessage struct {
 }
 
 type StandUpPacket struct {
-
+	WReadMWriteIndex int
+	WWriteMReadIndex int
+	FaceCountClose bool
+	CurrentPDFPage int
 }
 
 type StandUpStatusTable struct {
 	gorm.Model
 	ClassID int
+	TeacherNo string
 	WReadMWriteIndex int
 	WWriteMReadIndex int
+}
+
+type StudentStatusTable struct {
+	gorm.Model
+	ClassID int
+	PDF string
+	FaceCountResult string //[]FaceRectToken
+	StudentStatus string //[]StudentStatusWithPage
+}
+
+type StudentStatusWithPage struct {
+	PDFPage int `json:"pdf_page"`
+	StudentsStatus []StudentStatus `json:"students_status"`
+}
+
+type StudentStatus struct {
+	StudentNo string `json:"student_no"`
+	Attributes Attributes `json:"attributes"`
 }
 
 type Config struct {
@@ -104,6 +130,7 @@ type Config struct {
 	DeleteFaceSetUrl string `json:"delete_face_set_url"`
 	AddFaceUrl string `json:"add_face_url"`
 	DeleteFaceUrl string `json:"delete_face_url"`
+	DetectInterval int `json:"detect_interval"`
 }
 
 type DeviceResponse struct {

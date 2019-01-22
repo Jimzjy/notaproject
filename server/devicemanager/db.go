@@ -34,6 +34,7 @@ func init() {
 	db.AutoMigrate(&DeviceManagerSystemStats{})
 	db.AutoMigrate(&FaceCountRecord{})
 	db.AutoMigrate(&StandUpStatusTable{})
+	db.AutoMigrate(&StudentStatusTable{})
 }
 
 func getAllClasses() ([]Class, error) {

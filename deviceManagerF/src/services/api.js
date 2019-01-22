@@ -1,7 +1,7 @@
 export default {
-  queryAdminInfo: '/admin',
-  logoutAdmin: '/admin/logout',
-  loginAdmin: 'POST /admin/login',
+  queryUserInfo: '/user',
+  logoutUser: '/user/logout',
+  loginUser: 'POST /user/login',
 
   queryDashboard: '/dashboard',
 
@@ -34,4 +34,6 @@ export default {
   createClassroom: 'POST /classrooms',
   removeClassrooms: 'DELETE /classrooms',
   updateClassroom: 'PATCH /classrooms',
+
+  queryStandupClasses: 'POST /stand_up_classes',
 }
