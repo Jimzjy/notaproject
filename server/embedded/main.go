@@ -16,7 +16,7 @@ func setupRouter() *gin.Engine {
 	router.GET("/face_search", searchFace)
 
 	// 状态
-	router.GET("person_status", func(c *gin.Context) {
+	router.POST("/person_status", func(c *gin.Context) {
 		if err := sendPersonStatus(c); err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send person status error"})

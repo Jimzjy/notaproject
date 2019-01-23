@@ -93,6 +93,7 @@ type StandUpPacket struct {
 	WWriteMReadIndex int
 	FaceCountClose bool
 	CurrentPDFPage int
+	ChangePDFPage int
 }
 
 type StandUpStatusTable struct {

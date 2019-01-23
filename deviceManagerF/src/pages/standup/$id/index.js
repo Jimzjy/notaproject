@@ -32,6 +32,7 @@ class StandupDetail extends PureComponent {
   }
 
   suws = null
+  carousel = null
 
   handleFaceCountAdd = (data) => {
     const json = JSON.parse(data)
@@ -120,7 +121,7 @@ class StandupDetail extends PureComponent {
   }
 
   handleStandUpStart = () => {
-    if (this.suws) {
+    if (this.state.standtupStatus == true) {
       return
     }
 
@@ -129,17 +130,21 @@ class StandupDetail extends PureComponent {
     const getStandUpStatus = this.getStandUpStatus
     const getStandUpData = this.getStandUpData
     const handleSetState = this.handleSetState
+    const handlePageToChange = this.handlePageToChange
 
     this.suws = new WebSocket(`ws://localhost:8000/stand_up?class_id=${data.class_id}&teacher_no=${app.user.username}`)
     this.suws.onopen = function(evt) {
       console.log("open suws")
     }
     this.suws.onclose = function(evt) {
-      console.log("close suws")      
+      console.log("close suws")
+      handleSetState({
+        standtupStatus: false,
+      })   
     }
     this.suws.onmessage = function(evt) {
-      console.log(evt.data)
       const message = JSON.parse(evt.data)
+
       if (!getStandUpStatus()) {
         notification.open({
           message: '开始上课',
@@ -149,6 +154,8 @@ class StandupDetail extends PureComponent {
         _standupData.WReadMWriteIndex = message.WReadMWriteIndex
         handleSetState({standtupStatus: true, standupData: _standupData})
       }
+
+      handlePageToChange(message.ChangePDFPage)
     }
     this.suws.onerror = function(evt) {
       console.log("error: " + evt.data)
@@ -157,6 +164,14 @@ class StandupDetail extends PureComponent {
         description: evt.data,
         duration: 3,
       })
+    }
+  }
+
+  handlePageToChange = (page) => {
+    if (page > 0) {
+      this.carousel.next()
+    } else if (page < 0) {
+      this.carousel.prev()
     }
   }
 
@@ -174,6 +189,14 @@ class StandupDetail extends PureComponent {
       duration: 3,
     })
     this.suws = null
+  }
+
+  handlePageChange = (current) => {
+    if (this.suws == null) {
+      return
+    }
+
+    this.suws.send(JSON.stringify({ CurrentPDFPage: current+1 }))
   }
 
   getStandUpStatus = () => {
@@ -242,7 +265,7 @@ class StandupDetail extends PureComponent {
               <Button type="ghost" onClick={this.handleStandUpStop} style={{ marginLeft: 16 }}>下课</Button>
               {standtupStatus && (
                 <span style={{ marginLeft: 16 }}>
-                  <Popover placement="right" content={<QRcode size={160} value={`ws://localhost:8000/stand_up_mobile?class_id=${data.class_id}&write_channel_index=${standupData.WReadMWriteIndex}`}/>} >
+                  <Popover placement="right" content={<QRcode size={160} value={`/stand_up_mobile?class_id=${data.class_id}&write_channel_index=${standupData.WReadMWriteIndex}`}/>} >
                     <Button type="primary">二维码</Button>
                   </Popover>
                 </span>
@@ -271,7 +294,7 @@ class StandupDetail extends PureComponent {
           </Collapse>
         </Row>
         <Row style={{ marginTop: 24 }} >
-          <Carousel vertical className={styles.carousel}>
+          <Carousel className={styles.carousel} afterChange={this.handlePageChange} ref={(ref) => {this.carousel = ref}}>
             <div><h3>1</h3></div>
             <div><h3>2</h3></div>
             <div><h3>3</h3></div>

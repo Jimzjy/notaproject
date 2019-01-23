@@ -1450,7 +1450,7 @@ func handleFaceCountResp(c *gin.Context, chanResp chan string, chanPersonData ch
 		for {
 			_, _, err := conn.ReadMessage()
 			if err != nil {
-				log.Println("error from read from user:", err)
+				log.Println("read from user:", err)
 				break
 			}
 		}
@@ -1464,13 +1464,13 @@ func handleFaceCountResp(c *gin.Context, chanResp chan string, chanPersonData ch
 			if ok {
 				err = conn.WriteMessage(websocket.TextMessage, personData)
 				if err != nil {
-					log.Println("error from write to user:", err)
+					log.Println("write to user:", err)
 					return
 				}
 			} else {
 				err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 				if err != nil {
-					log.Println("error from write to user", err)
+					log.Println("write to user", err)
 					return
 				}
 				return
@@ -1506,7 +1506,7 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 			default:
 				_, data, err := conn.ReadMessage()
 				if err != nil {
-					log.Println("error from read from embedded:", err)
+					log.Println("read from embedded:", err)
 					return
 				}
 
@@ -1591,7 +1591,7 @@ func standUp(c *gin.Context) (err error) {
 		for {
 			_, data, err := conn.ReadMessage()
 			if err != nil {
-				log.Println("error from read from teacher web client:", err)
+				log.Println("read from teacher web client:", err)
 				break
 			}
 
@@ -1618,15 +1618,14 @@ func standUp(c *gin.Context) (err error) {
 			}
 
 			if standUpPacket.CurrentPDFPage > 0 {
+				// TODO("make sure it")
 				currentPDFPage = standUpPacket.CurrentPDFPage
 			}
 
 			if writeChannelIndex > 0 {
 				select {
 				case standUpChannels[writeChannelIndex] <- standUpPacket:
-					fmt.Println("web write ok")
 				default:
-					fmt.Println("web write default")
 				}
 			}
 		}
@@ -1677,13 +1676,15 @@ func standUp(c *gin.Context) (err error) {
 			}
 
 			var _studentsStatus []StudentStatus
-			devicePath := fmt.Sprintf("%v:%v", device[0].DevicePath, device[0].DevicePort)
+			devicePath := fmt.Sprintf("http://%v:%v/person_status", device[0].DevicePath, device[0].DevicePort)
 			_studentsStatus, err = getStudentsStatus(camera[0].CamStreamPath, devicePath, faceRectNos)
 			if err != nil {
 				log.Println(err)
 			}
 
-			studentsStatusWithPage[currentPDFPage-1].StudentsStatus = append(studentsStatusWithPage[currentPDFPage-1].StudentsStatus, _studentsStatus...)
+			if currentPDFPage > 0 {
+				studentsStatusWithPage[currentPDFPage-1].StudentsStatus = append(studentsStatusWithPage[currentPDFPage-1].StudentsStatus, _studentsStatus...)
+			}
 		}
 	}()
 
@@ -1697,7 +1698,7 @@ func standUp(c *gin.Context) (err error) {
 	}
 	err = conn.WriteMessage(websocket.TextMessage, startData)
 	if err != nil {
-		log.Println("error from write to teacher web client", err)
+		log.Println("write to teacher web client", err)
 		return
 	}
 
@@ -1737,7 +1738,9 @@ func standUp(c *gin.Context) (err error) {
 			}
 		case standUpPacket, ok := <-standUpChannels[readChannelIndex]:
 			if ok {
-				writeChannelIndex = standUpPacket.WWriteMReadIndex
+				if standUpPacket.WWriteMReadIndex > 0 {
+					writeChannelIndex = standUpPacket.WWriteMReadIndex
+				}
 
 				var data []byte
 				data, err = json.Marshal(standUpPacket)
@@ -1747,7 +1750,7 @@ func standUp(c *gin.Context) (err error) {
 
 				err = conn.WriteMessage(websocket.TextMessage, data)
 				if err != nil {
-					log.Println("error from write to teacher web client", err)
+					log.Println("write to teacher web client", err)
 					return
 				}
 			} else {
@@ -1792,6 +1795,13 @@ func standUpMobile(c *gin.Context) (err error) {
 		newStandUpStatus := standUpStatus
 		newStandUpStatus.WWriteMReadIndex = readIndex
 		err = updateTableItem(standUpStatus, *newStandUpStatus)
+		if err != nil {
+			log.Println(err)
+		}
+
+		standUpChannels[writeIndex] <- StandUpPacket{
+			WWriteMReadIndex: readIndex,
+		}
 	} else {
 		var _writeIndex int
 		_writeIndex, err = strconv.Atoi(writeChannelIndex)
@@ -1818,7 +1828,7 @@ func standUpMobile(c *gin.Context) (err error) {
 		for {
 			_, data, err := conn.ReadMessage()
 			if err != nil {
-				log.Println("error from read from teacher mobile client:", err)
+				log.Println("read from teacher mobile client:", err)
 				break
 			}
 
@@ -1831,12 +1841,12 @@ func standUpMobile(c *gin.Context) (err error) {
 
 			select {
 			case standUpChannels[writeIndex] <- standUpPacket:
-				fmt.Println("mobile write ok")
 			default:
-				fmt.Println("mobile write default")
 			}
 		}
 	}()
+
+	// TODO("start message")
 
 	for {
 		select {
@@ -1844,8 +1854,6 @@ func standUpMobile(c *gin.Context) (err error) {
 			return
 		case standUpPacket, ok := <-standUpChannels[readIndex]:
 			if ok {
-				standUpPacket.WWriteMReadIndex = readIndex
-
 				var data []byte
 				data, err = json.Marshal(standUpPacket)
 				if err != nil {
@@ -1854,7 +1862,7 @@ func standUpMobile(c *gin.Context) (err error) {
 
 				err = conn.WriteMessage(websocket.TextMessage, data)
 				if err != nil {
-					log.Println("error from write to teacher mobile client", err)
+					log.Println("write to teacher mobile client", err)
 					return
 				}
 			} else {
