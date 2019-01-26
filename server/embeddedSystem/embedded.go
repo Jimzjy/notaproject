@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 	"unsafe"
 )
@@ -115,37 +116,57 @@ func setConfig(c *gin.Context) error {
 
 func sendPersonStatus(c *gin.Context) (err error) {
 	camStreamPath := c.PostForm("cam_stream_path")
+	basicSize := 5
 
-	_, faceDetectResults, err := getFacePPDetect(camStreamPath, false)
+	_, faceDetectResults, err := getFacePPDetect(camStreamPath)
 	if err != nil {
 		return
 	}
 
-	if len(faceDetectResults.Faces) <= 5 {
+	if len(faceDetectResults.Faces) <= basicSize {
 		c.JSON(http.StatusOK, faceDetectResults)
 	} else {
 		var body []byte
 		var err2 error
+		facesTokens := []string{""}
+		count := 0
+		index := 0
 
 		for i := 5; i < len(faceDetectResults.Faces); i++ {
+			facesTokens[index] += faceDetectResults.Faces[i].FaceToken + ","
+			count++
+			if count >= 5 {
+				facesTokens[index] = strings.TrimSuffix(facesTokens[index], ",")
+				facesTokens = append(facesTokens, "")
+				index++
+				count = 0
+			}
+		}
+
+		facesTokens[len(facesTokens) - 1] = strings.TrimSuffix(facesTokens[len(facesTokens) - 1], ",")
+
+		for k, v := range facesTokens {
 			body, err2 = sendPostForm(url.Values{
 				"api_key": {config.ApiKey},
 				"api_secret": {config.ApiSecret},
-				"face_token": {faceDetectResults.Faces[i].FaceToken},
+				"face_tokens": {v},
+				"return_attributes": {"headpose,eyestatus,emotion"},
 			}, config.AnalyzeFaceUrl)
 			if err2 != nil {
 				log.Println(err2)
 				continue
 			}
 
-			var faceAnalyzeResult FaceAnalyzeResult
-			err2 = json.Unmarshal(body, &faceAnalyzeResult)
+			var _faceAnalyzeResults FaceDetectResults
+			err2 = json.Unmarshal(body, &_faceAnalyzeResults)
 			if err2 != nil {
 				log.Println(err2)
 				continue
 			}
 
-			faceDetectResults.Faces[i].Attributes = faceAnalyzeResult.Attributes
+			for k2, v2 := range _faceAnalyzeResults.Faces {
+				faceDetectResults.Faces[basicSize + basicSize * k + k2].Attributes = v2.Attributes
+			}
 		}
 
 		c.JSON(http.StatusOK, faceDetectResults)
@@ -215,7 +236,7 @@ func getSearchData(camStreamPath, faceSetToken string, chPersonData chan PersonD
 	var err error
 	defer close(chPersonData)
 
-	gImage, faceDetectResults, err := getFacePPDetect(camStreamPath, true)
+	gImage, faceDetectResults, err := getFacePPDetect(camStreamPath)
 	if err != nil {
 		log.Println(err)
 		return
@@ -318,7 +339,7 @@ func getCameraImage(camStreamPath string, img *gocv.Mat) error {
 	return nil
 }
 
-func getFacePPDetect(camStreamPath string, getGImage bool) (gImage []byte, faceDetectResults FaceDetectResults, err error) {
+func getFacePPDetect(camStreamPath string) (gImage []byte, faceDetectResults FaceDetectResults, err error) {
 	img := gocv.NewMat()
 	defer img.Close()
 	err = getCameraImage(camStreamPath, &img)
@@ -326,11 +347,9 @@ func getFacePPDetect(camStreamPath string, getGImage bool) (gImage []byte, faceD
 		return
 	}
 
-	if getGImage {
-		gImage, err = gocv.IMEncode(".jpg", img)
-		if err != nil {
-			return
-		}
+	gImage, err = gocv.IMEncode(".jpg", img)
+	if err != nil {
+		return
 	}
 
 	faceDetectBody, err := fileUploadRequest(config.DetectFaceUrl, map[string]string{
@@ -418,7 +437,15 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		err = fmt.Errorf("response not ok")
+		err = fmt.Errorf("response not ok for upload file")
+
+		//var body2 []byte
+		//body2, err = ioutil.ReadAll(response.Body)
+		//if err != nil {
+		//	return
+		//}
+		//err = fmt.Errorf(string(body2))
+
 		return
 	}
 
@@ -500,7 +527,7 @@ func uploadStatsRequest() error {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf("response not ok")
+		return fmt.Errorf("response not ok for upload stats")
 	}
 
 	//if response.StatusCode != http.StatusOK {
@@ -547,7 +574,15 @@ func sendPostForm(params url.Values, url string) (body []byte, err error) {
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		err = fmt.Errorf("response not ok")
+		err = fmt.Errorf("response not ok for send post form")
+
+		//var body2 []byte
+		//body2, err = ioutil.ReadAll(response.Body)
+		//if err != nil {
+		//	return
+		//}
+		//err = fmt.Errorf(string(body2))
+
 		return
 	}
 

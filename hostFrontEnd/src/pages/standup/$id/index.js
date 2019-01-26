@@ -32,7 +32,14 @@ class StandupDetail extends PureComponent {
   }
 
   suws = null
-  carousel = null
+  carousel = React.createRef()
+  faceCountLayoutWidth = 0
+
+  getFaceCountLayoutWidth = (e) => {
+    if (e) {
+      this.faceCountLayoutWidth = e.getBoundingClientRect().width
+    }
+  }
 
   handleFaceCountAdd = (data) => {
     const json = JSON.parse(data)
@@ -224,7 +231,7 @@ class StandupDetail extends PureComponent {
     }
 
     const faceImage = `${apiPrefix}/images/${faceCountData.backgroundImage}`
-    const imageScale = window.innerWidth * 0.5 / faceCountData.global_width
+    const imageScale = this.faceCountLayoutWidth * 0.5 / faceCountData.global_width
     const imageHeight = faceCountData.global_height * imageScale
     const imageWidth = faceCountData.global_width * imageScale
 
@@ -274,27 +281,29 @@ class StandupDetail extends PureComponent {
             <Collapse.Panel header="点名信息" key="2">
               <Button onClick={this.handleFaceCountStart}>点名</Button>
               <Switch defaultChecked style={{ marginLeft: 16 }} checkedChildren="背景开" unCheckedChildren="背景关" onChange={(checked) => { this.handleSetState({showFaceCountBackground: checked}) }} />
-              <Col lg={24} md={24} style={{ marginTop: 24 }}>
-                <Spin spinning={showSpinning} style={{ marginBottom: 24 }}>
-                  {showFaceCount && (
-                    <div>
-                      <Progress percent={Math.ceil(currentPerson * 100 / faceCountData.personCount)} style={{ width: imageWidth }}/>
-                      <Stage width={window.innerWidth} height={imageHeight + 20}>
-                        <Layer>
-                          { showFaceCountBackground && <KImage src={faceImage} width={imageWidth} height={imageHeight}/> }
-                          { rects }
-                          { texts }
-                        </Layer>
-                      </Stage>
-                    </div>
-                  )}
-                </Spin>
-              </Col>
+              <div ref={this.getFaceCountLayoutWidth} >
+                <Col lg={24} md={24} style={{ marginTop: 24 }}>
+                  <Spin spinning={showSpinning} style={{ marginBottom: 24 }}>
+                    {showFaceCount && (
+                      <div>
+                        <Progress percent={Math.ceil(currentPerson * 100 / faceCountData.personCount)} style={{ width: imageWidth }}/>
+                        <Stage width={window.innerWidth} height={imageHeight + 20}>
+                          <Layer>
+                            { showFaceCountBackground && <KImage src={faceImage} width={imageWidth} height={imageHeight}/> }
+                            { rects }
+                            { texts }
+                          </Layer>
+                        </Stage>
+                      </div>
+                    )}
+                  </Spin>
+                </Col>
+              </div>
             </Collapse.Panel>
           </Collapse>
         </Row>
         <Row style={{ marginTop: 24 }} >
-          <Carousel className={styles.carousel} afterChange={this.handlePageChange} ref={(ref) => {this.carousel = ref}}>
+          <Carousel className={styles.carousel} afterChange={this.handlePageChange} ref={this.carousel}>
             <div><h3>1</h3></div>
             <div><h3>2</h3></div>
             <div><h3>3</h3></div>

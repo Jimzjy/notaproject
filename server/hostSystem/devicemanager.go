@@ -1584,6 +1584,7 @@ func standUp(c *gin.Context) (err error) {
 
 	var currentPDFPage int
 	var faceRectNos []FaceRectToken
+	var faceCountFinish = false
 	done := make(chan string)
 	go func() {
 		defer close(done)
@@ -1615,6 +1616,8 @@ func standUp(c *gin.Context) (err error) {
 					log.Println(err)
 					continue
 				}
+
+				faceCountFinish = true
 			}
 
 			if standUpPacket.CurrentPDFPage > 0 {
@@ -1673,6 +1676,9 @@ func standUp(c *gin.Context) (err error) {
 					return
 				}
 			default:
+				if !faceCountFinish {
+					continue
+				}
 			}
 
 			var _studentsStatus []StudentStatus
