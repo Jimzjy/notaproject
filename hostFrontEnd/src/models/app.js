@@ -99,12 +99,14 @@ export default {
         const list = ROUTE_LIST
         let permissions = {}
         let routeList = list
+        let routeTo = '/dashboard'
         switch (user.permissions) {
           case UserPermission.ADMIN.role:
             permissions.visit = UserPermission.ADMIN.visit
             break
           case UserPermission.TEACHER.role:
             permissions.visit = UserPermission.TEACHER.visit
+            routeTo = '/standup'
             break
           default:
             permissions.visit = UserPermission.ADMIN.visit
@@ -127,9 +129,9 @@ export default {
             routeList,
           },
         })
-        if (pathMatchRegexp('/login', window.location.pathname)) {
+        if (pathMatchRegexp(['/', '/login'], window.location.pathname)) {
           router.push({
-            pathname: '/dashboard',
+            pathname: routeTo,
           })
         }
       } else if (queryLayout(config.layouts, locationPathname) !== 'public') {

@@ -10,6 +10,7 @@ import (
 const (
 	AdminPermission = "admin"
 	TeacherPermission = "teacher"
+	NormalUserPermission = "normal"
 )
 
 type FaceCountRecord struct {

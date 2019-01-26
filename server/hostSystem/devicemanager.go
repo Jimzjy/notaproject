@@ -36,7 +36,6 @@ var upgrader = websocket.Upgrader{
 }
 var standUpChannels []chan StandUpPacket
 
-// 获取设置文件信息
 func getConfig(config *Config) error {
 	var err error
 
@@ -1970,6 +1969,22 @@ func getStudentsStatus(camStreamPath, devicePath string, faceRectNos []FaceRectT
 	return
 }
 
+func currentStandUp(c *gin.Context) (err error) {
+	teacherNo := c.PostForm("teacher_no")
+
+	standUpStatus, err := getStandUpStatusByTeacherNo(teacherNo)
+	if err != nil {
+		return
+	}
+	if standUpStatus.ID == 0 {
+		c.JSON(http.StatusOK, JsonMessage{Message: "no class"})
+		return
+	}
+
+	c.JSON(http.StatusOK, standUpStatus)
+	return
+}
+
 func userLogin(c *gin.Context) (err error) {
 	username := c.PostForm("username")
 	password := c.PostForm("password")
@@ -1994,6 +2009,40 @@ func userLogin(c *gin.Context) (err error) {
 	}
 
 	c.JSON(http.StatusBadRequest, JsonMessage{Message: "Auth failed"})
+	return
+}
+
+func mobileUserLogin(c *gin.Context) (err error) {
+	userType := c.PostForm("user_type")
+	username := c.PostForm("username")
+	password := c.PostForm("password")
+
+	switch userType {
+	case TeacherPermission:
+		var teacher *Teacher
+		teacher, err = getTeacher(username)
+		if err != nil {
+			return
+		}
+
+		if fmt.Sprintf("%x", sha256.Sum256([]byte(password))) == teacher.TeacherPassword {
+			c.JSON(http.StatusOK, JsonMessage{Message: "auth successful"})
+			return
+		}
+	case NormalUserPermission:
+		var student *Student
+		student, err = getStudent(username)
+		if err != nil {
+			return
+		}
+
+		if fmt.Sprintf("%x", sha256.Sum256([]byte(password))) == student.StudentPassword {
+			c.JSON(http.StatusOK, JsonMessage{Message: "auth successful"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusBadRequest, JsonMessage{Message: "auth failed"})
 	return
 }
 

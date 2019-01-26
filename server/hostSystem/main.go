@@ -84,6 +84,13 @@ func setupRouter() *gin.Engine {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send stand up classes error"})
 		}
 	})
+	router.POST("/current_stand_up", func(c *gin.Context) {
+		if err := currentStandUp(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send current stand up error"})
+		}
+	})
+
 
 	// 教室状态
 	router.POST("/classroom_stats", func(c *gin.Context) {
@@ -253,6 +260,11 @@ func setupRouter() *gin.Engine {
 	router.GET("/user/logout", func(c *gin.Context) {
 		if err := userLogout(c); err != nil {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "user logout error"})
+		}
+	})
+	router.POST("/user/mobile_login", func(c *gin.Context) {
+		if err := mobileUserLogin(c); err != nil {
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "mobile user login error"})
 		}
 	})
 

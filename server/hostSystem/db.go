@@ -504,6 +504,19 @@ func getStandUpStatus(classID int) (standUpStatus *StandUpStatusTable, err error
 	return
 }
 
+func getStandUpStatusByTeacherNo(teacherNo string) (standUpStatus *StandUpStatusTable, err error) {
+	standUpStatus = &StandUpStatusTable{}
+
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Last(&standUpStatus, "teacher_no = ?", teacherNo)
+	return
+}
+
 func getTableCount(tableName string) (count int, err error) {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {
