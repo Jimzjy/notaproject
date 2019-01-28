@@ -475,7 +475,7 @@ func getDeviceCameraCount() (devices int, cameras int, err error) {
 	return
 }
 
-func getFaceCountRecord(classID int) (faceCountRecord *FaceCountRecord, err error) {
+func getLastFaceCountRecord(classID int) (faceCountRecord *FaceCountRecord, err error) {
 	faceCountRecord = &FaceCountRecord{}
 
 	db, err := gorm.Open(DB, DBName)
@@ -489,6 +489,21 @@ func getFaceCountRecord(classID int) (faceCountRecord *FaceCountRecord, err erro
 		err = fmt.Errorf("can not find faceCountRecord for classID %v", classID)
 	}
 	return
+}
+
+func getFaceCountRecordByID(id int) (faceCountRecord *FaceCountRecord, err error) {
+	faceCountRecord = &FaceCountRecord{}
+
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.First(&faceCountRecord, "id = ?", id)
+	if faceCountRecord.ID == 0 {
+		err = fmt.Errorf("can not find faceCountRecord for id %v", id)
+	}
 }
 
 func getStandUpStatus(classID int) (standUpStatus *StandUpStatusTable, err error) {

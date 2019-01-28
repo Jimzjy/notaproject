@@ -34,6 +34,4 @@ export default {
   createClassroom: 'POST /classrooms',
   removeClassrooms: 'DELETE /classrooms',
   updateClassroom: 'PATCH /classrooms',
-
-  queryStandupClasses: 'POST /stand_up_classes',
 }

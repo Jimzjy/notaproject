@@ -19,6 +19,13 @@ type FaceCountRecord struct {
 	FaceRectTokens string
 }
 
+type FaceCountRecordResponse struct {
+	FaceRectTokens []FaceRectToken `json:"face_rect_tokens"`
+	StudentCount int `json:"student_count"`
+	StudentInClassCount int `json:"student_in_class_count"`
+	StudentNotInClass []string `json:"student_not_in_class"`
+}
+
 type FaceRectTokens struct {
 	Faces []FaceRectToken `json:"faces"`
 }
@@ -93,14 +100,17 @@ type StandUpPacket struct {
 	WReadMWriteIndex int
 	WWriteMReadIndex int
 	FaceCountClose bool
+	FaceCountRecordID int
 	CurrentPDFPage int
 	ChangePDFPage int
+	PDFUrl string
+	RequestStartPacket bool
 }
 
 type StandUpStatusTable struct {
 	gorm.Model
-	ClassID int
-	TeacherNo string
+	ClassID int `json:"class_id"`
+	TeacherNo string `json:"teacher_no"`
 	WReadMWriteIndex int
 	WWriteMReadIndex int
 }
@@ -109,7 +119,7 @@ type StudentStatusTable struct {
 	gorm.Model
 	ClassID int
 	PDF string
-	FaceCountResult string //[]FaceRectToken
+	FaceCountRecordID int
 	StudentStatus string //[]StudentStatusWithPage
 }
 

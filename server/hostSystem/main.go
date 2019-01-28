@@ -64,6 +64,12 @@ func setupRouter() *gin.Engine {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "face count error"})
 		}
 	})
+	router.GET("/face_count_record", func(c *gin.Context) {
+		if err := sendFaceCountRecord(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send face count error"})
+		}
+	})
 
 	// 上课
 	router.GET("/stand_up", func(c *gin.Context) {
@@ -78,13 +84,7 @@ func setupRouter() *gin.Engine {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "stand up mobile start error"})
 		}
 	})
-	router.POST("/stand_up_classes", func(c *gin.Context) {
-		if err := standUpClasses(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send stand up classes error"})
-		}
-	})
-	router.POST("/current_stand_up", func(c *gin.Context) {
+	router.GET("/current_stand_up", func(c *gin.Context) {
 		if err := currentStandUp(c); err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send current stand up error"})

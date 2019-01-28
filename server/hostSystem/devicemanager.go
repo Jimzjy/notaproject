@@ -1372,6 +1372,53 @@ func deleteClassrooms(c *gin.Context) (err error) {
 	return
 }
 
+func sendFaceCountRecord(c *gin.Context) (err error) {
+	recordID := c.Query("record_id")
+
+	id, err := strconv.Atoi(recordID)
+	if err != nil {
+		return
+	}
+	faceCountRecord, err := getFaceCountRecordByID(id)
+	if err != nil {
+		return
+	}
+
+	var faceRectTokens []FaceRectToken
+	err = json.Unmarshal([]byte(faceCountRecord.FaceRectTokens), &faceRectTokens)
+	if err != nil {
+		return
+	}
+
+	students, err := getStudentsByClass(faceCountRecord.ClassID)
+	if err != nil {
+		return
+	}
+	var studentInClass []string
+	for _, v1 := range faceRectTokens {
+		for _, v2 := range students {
+			if v1.FaceToken == v2.FaceToken {
+				studentInClass = append(studentInClass, v2.FaceToken)
+				break
+			}
+		}
+	}
+	var studentNotIn []string
+	for _, v1 := range students {
+		if !checkIfInStringSlice(studentInClass, v1.FaceToken) && !checkIfInStringSlice(studentNotIn, v1.FaceToken) {
+			studentNotIn = append(studentNotIn, v1.FaceToken)
+		}
+	}
+
+	c.JSON(http.StatusOK, FaceCountRecordResponse{
+		FaceRectTokens: faceRectTokens,
+		StudentCount: len(students),
+		StudentInClassCount: len(studentInClass),
+		StudentNotInClass: studentNotIn,
+	})
+	return
+}
+
 func faceCount(c *gin.Context) (err error) {
 	classID := c.Query("class_id")
 	id, err := strconv.Atoi(classID)
@@ -1584,6 +1631,8 @@ func standUp(c *gin.Context) (err error) {
 	var currentPDFPage int
 	var faceRectNos []FaceRectToken
 	var faceCountFinish = false
+	var faceCountRecordID = 0
+	var pdfUrl = ""
 	done := make(chan string)
 	go func() {
 		defer close(done)
@@ -1604,7 +1653,7 @@ func standUp(c *gin.Context) (err error) {
 
 			if standUpPacket.FaceCountClose {
 				var _faceCountRecord *FaceCountRecord
-				_faceCountRecord, err = getFaceCountRecord(id)
+				_faceCountRecord, err = getLastFaceCountRecord(id)
 				if err != nil {
 					log.Println(err)
 					continue
@@ -1616,6 +1665,8 @@ func standUp(c *gin.Context) (err error) {
 					continue
 				}
 
+				faceCountRecordID = int(_faceCountRecord.ID)
+				standUpPacket.FaceCountRecordID = faceCountRecordID
 				faceCountFinish = true
 			}
 
@@ -1720,20 +1771,20 @@ func standUp(c *gin.Context) (err error) {
 					close(standUpChannels[writeChannelIndex])
 				}
 
-				var finalFaceCountResult, finalStudentStatus []byte
-				finalFaceCountResult, err = json.Marshal(faceRectNos)
-				if err != nil {
-					log.Println(err)
-				}
+				var finalStudentStatus []byte
+				//finalFaceCountResult, err = json.Marshal(faceRectNos)
+				//if err != nil {
+				//	log.Println(err)
+				//}
 				finalStudentStatus, err = json.Marshal(studentsStatusWithPage)
 				if err != nil {
 					log.Println(err)
 				}
-				//TODO("set PDF URL")
+
 				err = createTableItem(&StudentStatusTable{
 					ClassID: id,
-					PDF: "",
-					FaceCountResult: string(finalFaceCountResult),
+					PDF: pdfUrl,
+					FaceCountRecordID: faceCountRecordID,
 					StudentStatus: string(finalStudentStatus),
 				})
 				if err != nil {
@@ -1745,6 +1796,19 @@ func standUp(c *gin.Context) (err error) {
 			if ok {
 				if standUpPacket.WWriteMReadIndex > 0 {
 					writeChannelIndex = standUpPacket.WWriteMReadIndex
+				}
+
+				if standUpPacket.RequestStartPacket {
+					startPacket := StandUpPacket{
+						PDFUrl: pdfUrl,
+					}
+
+					if faceCountRecordID != 0 {
+						standUpPacket.FaceCountRecordID = faceCountRecordID
+						standUpPacket.FaceCountClose = true
+					}
+
+					standUpChannels[writeChannelIndex] <- startPacket
 				}
 
 				var data []byte
@@ -1851,7 +1915,8 @@ func standUpMobile(c *gin.Context) (err error) {
 		}
 	}()
 
-	// TODO("start message")
+	startPacket := StandUpPacket{ RequestStartPacket: true }
+	standUpChannels[writeIndex] <- startPacket
 
 	for {
 		select {
@@ -1875,49 +1940,6 @@ func standUpMobile(c *gin.Context) (err error) {
 			}
 		}
 	}
-}
-
-func standUpClasses(c *gin.Context) (err error) {
-	teacherNo := c.PostForm("teacher_no")
-	classID, byClassID := c.GetPostForm("class_id")
-
-	if byClassID {
-		var id int
-		id, err = strconv.Atoi(classID)
-		if err != nil {
-			return
-		}
-
-		var teachers []Teacher
-		teachers, err = getTeachersByClass(id)
-		if len(teachers) > 0 && *teachers[0].TeacherNo == teacherNo {
-			var class *Class
-			class, err = getClass(id)
-			if err != nil {
-				return
-			}
-
-			var classesResp *ClassesResponse
-			classesResp, err = newClassesResponse([]Class{*class}, "", "")
-
-			c.JSON(http.StatusOK, classesResp)
-		} else {
-			err = fmt.Errorf("can not find class %v for teacher %v", classID, teacherNo)
-			return
-		}
-	} else {
-		var classes []Class
-		classes, err = getClassesByTeacherNo(teacherNo)
-		if err != nil {
-			return
-		}
-
-		var classesResp *ClassesResponse
-		classesResp, err = newClassesResponse(classes, "", "")
-
-		c.JSON(http.StatusOK, classesResp)
-	}
-	return
 }
 
 func getStudentsStatus(camStreamPath, devicePath string, faceRectNos []FaceRectToken) (studentsStatus []StudentStatus, err error) {
@@ -1970,14 +1992,14 @@ func getStudentsStatus(camStreamPath, devicePath string, faceRectNos []FaceRectT
 }
 
 func currentStandUp(c *gin.Context) (err error) {
-	teacherNo := c.PostForm("teacher_no")
+	teacherNo := c.Query("teacher_no")
 
 	standUpStatus, err := getStandUpStatusByTeacherNo(teacherNo)
 	if err != nil {
 		return
 	}
 	if standUpStatus.ID == 0 {
-		c.JSON(http.StatusOK, JsonMessage{Message: "no class"})
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no class"})
 		return
 	}
 

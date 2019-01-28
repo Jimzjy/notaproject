@@ -1,9 +1,8 @@
 import { pathMatchRegexp } from 'utils'
-import { objectToFormData } from 'utils/request'
 import api from 'api'
 
 const { 
-  queryStandupClasses
+  queryClasses
 } = api
 
 export default {
@@ -28,7 +27,7 @@ export default {
     *query({ payload }, { call, put, select }) {
       const { user } = yield select(_ => _.app)
       payload.teacher_no = user.username
-      const data = yield call(queryStandupClasses, objectToFormData(payload))
+      const data = yield call(queryClasses, payload)
       const { success, classes } = data
 
       if (success && classes.length > 0) {

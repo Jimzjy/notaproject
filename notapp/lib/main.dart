@@ -25,6 +25,7 @@ void main() {
         homePage = new TeacherPage();
         break;
       case NOT_LOGIN:
+      default:
         runApp(new LoginApp());
         return;
     }

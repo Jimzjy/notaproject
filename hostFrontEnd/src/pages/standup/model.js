@@ -1,10 +1,9 @@
 import modelExtend from 'dva-model-extend'
 import { pathMatchRegexp } from 'utils'
 import { model } from 'utils/model'
-import { objectToFormData } from 'utils/request'
 import api from 'api'
 
-const { queryStandupClasses } = api
+const { queryClasses } = api
 
 export default modelExtend(model, {
   namespace: 'standup',
@@ -24,7 +23,7 @@ export default modelExtend(model, {
     *query({ payload }, { call, put, select }) {
       const { user } = yield select(_ => _.app)
       payload.teacher_no = user.username
-      const data = yield call(queryStandupClasses, objectToFormData(payload))
+      const data = yield call(queryClasses, payload)
 
       if (data.success) {
         yield put({
