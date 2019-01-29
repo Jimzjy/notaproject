@@ -504,6 +504,7 @@ func getFaceCountRecordByID(id int) (faceCountRecord *FaceCountRecord, err error
 	if faceCountRecord.ID == 0 {
 		err = fmt.Errorf("can not find faceCountRecord for id %v", id)
 	}
+	return
 }
 
 func getStandUpStatus(classID int) (standUpStatus *StandUpStatusTable, err error) {
@@ -529,6 +530,28 @@ func getStandUpStatusByTeacherNo(teacherNo string) (standUpStatus *StandUpStatus
 	defer db.Close()
 
 	db.Last(&standUpStatus, "teacher_no = ?", teacherNo)
+	return
+}
+
+func getStudentStatusRecordByClass(classID int) (studentStatus []StudentStatusTable, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Order("created_at desc").Find(&studentStatus, "class_id = ?", classID)
+	return
+}
+
+func getStudentStatusRecordByTeacher(teacherNo string) (studentStatus []StudentStatusTable, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Order("created_at desc").Find(&studentStatus, "teacher_no = ?", teacherNo)
 	return
 }
 

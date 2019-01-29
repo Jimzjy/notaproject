@@ -139,3 +139,34 @@ Map<String, dynamic> _$FaceCountRecordResponseToJson(
       'student_in_class_count': instance.studentInClassCount,
       'student_not_in_class': instance.studentNotInClass
     };
+
+TeacherResponse _$TeacherResponseFromJson(Map<String, dynamic> json) {
+  return TeacherResponse(
+      teacherNo: json['teacher_no'] as String,
+      teacherName: json['teacher_name'] as String,
+      teacherImage: json['teacher_image'] as String,
+      teacherPassword: json['teacher_password'] as String,
+      classIDs: (json['class_ids'] as List)?.map((e) => e as int)?.toList());
+}
+
+Map<String, dynamic> _$TeacherResponseToJson(TeacherResponse instance) =>
+    <String, dynamic>{
+      'teacher_no': instance.teacherNo,
+      'teacher_name': instance.teacherName,
+      'teacher_image': instance.teacherImage,
+      'teacher_password': instance.teacherPassword,
+      'class_ids': instance.classIDs
+    };
+
+TeachersResponse _$TeachersResponseFromJson(Map<String, dynamic> json) {
+  return TeachersResponse(
+      teachers: (json['teachers'] as List)
+          ?.map((e) => e == null
+              ? null
+              : TeacherResponse.fromJson(e as Map<String, dynamic>))
+          ?.toList(),
+      total: json['total'] as int);
+}
+
+Map<String, dynamic> _$TeachersResponseToJson(TeachersResponse instance) =>
+    <String, dynamic>{'teachers': instance.teachers, 'total': instance.total};

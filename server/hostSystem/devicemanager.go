@@ -1784,6 +1784,7 @@ func standUp(c *gin.Context) (err error) {
 				err = createTableItem(&StudentStatusTable{
 					ClassID: id,
 					PDF: pdfUrl,
+					TeacherNo: teacherNo,
 					FaceCountRecordID: faceCountRecordID,
 					StudentStatus: string(finalStudentStatus),
 				})
@@ -2004,6 +2005,55 @@ func currentStandUp(c *gin.Context) (err error) {
 	}
 
 	c.JSON(http.StatusOK, standUpStatus)
+	return
+}
+
+func sendStudentStatusRecords(c *gin.Context) (err error) {
+	teacherNo, ByTeacher := c.GetQuery("teacher_no")
+	classID, ByClass := c.GetQuery("class_id")
+
+	var studentStatus []StudentStatusTable
+	if ByTeacher {
+		studentStatus, err = getStudentStatusRecordByTeacher(teacherNo)
+		if err != nil {
+			return
+		}
+	} else if ByClass {
+		var id int
+		id, err = strconv.Atoi(classID)
+		if err != nil {
+			return
+		}
+
+		studentStatus, err = getStudentStatusRecordByClass(id)
+		if err != nil {
+			return
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no param provide"})
+		return
+	}
+
+	studentStatusResponse := make([]StudentStatusResponse, len(studentStatus))
+	for k, v := range studentStatus {
+		studentStatusResponse[k].TeacherNo = v.TeacherNo
+		studentStatusResponse[k].ClassID = v.ClassID
+		studentStatusResponse[k].FaceCountRecordID = v.FaceCountRecordID
+		studentStatusResponse[k].PDF = v.PDF
+		studentStatusResponse[k].UpdateTime = v.UpdatedAt.Unix()
+
+		var _studentStatusWithPage []StudentStatusWithPage
+		err = json.Unmarshal([]byte(v.StudentStatus), &_studentStatusWithPage)
+		if err != nil {
+			return
+		}
+		studentStatusResponse[k].StudentStatus = _studentStatusWithPage
+	}
+
+	c.JSON(http.StatusOK, StudentStatusListResponse{
+		StudentStatus: studentStatusResponse,
+		Total: len(studentStatusResponse),
+	})
 	return
 }
 

@@ -146,3 +146,39 @@ class FaceCountRecordResponse {
   factory FaceCountRecordResponse.fromJson(Map<String, dynamic> json) => _$FaceCountRecordResponseFromJson(json);
   Map<String, dynamic> toJson() => _$FaceCountRecordResponseToJson(this);
 }
+
+@JsonSerializable()
+class TeacherResponse {
+  TeacherResponse({
+    this.teacherNo = "0",
+    this.teacherName = "0",
+    this.teacherImage = "",
+    this.teacherPassword = "",
+    this.classIDs,
+  });
+
+  @JsonKey(name: "teacher_no")
+  String teacherNo;
+  @JsonKey(name: "teacher_name")
+  String teacherName;
+  @JsonKey(name: "teacher_image")
+  String teacherImage;
+  @JsonKey(name: "teacher_password")
+  String teacherPassword;
+  @JsonKey(name: "class_ids")
+  List<int> classIDs;
+
+  factory TeacherResponse.fromJson(Map<String, dynamic> json) => _$TeacherResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$TeacherResponseToJson(this);
+}
+
+@JsonSerializable()
+class TeachersResponse {
+  TeachersResponse({this.teachers, this.total});
+
+  List<TeacherResponse> teachers;
+  int total;
+
+  factory TeachersResponse.fromJson(Map<String, dynamic> json) => _$TeachersResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$TeachersResponseToJson(this);
+}

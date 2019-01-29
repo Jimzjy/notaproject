@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:notapp/models/json_models.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'sub_navigation.dart';
 
 class ClassesPage extends StatefulWidget {
 
@@ -21,7 +22,7 @@ class _ClassPageState extends State<ClassesPage> {
 
   @override
   void initState() {
-    _getTeacherNo().then((v) {
+    getTeacherNo().then((v) {
       _teacherNo = v;
       _requestClasses();
     });
@@ -52,11 +53,11 @@ class _ClassPageState extends State<ClassesPage> {
             itemCount: _getClassListSize(),
             itemBuilder: (BuildContext context, int index) {
               if (_standUpStatus != null) {
-                var className = "...";
+                ClassResponse currentClass;
 
                 for (var classResponse in _classesResponse.classes) {
                   if (classResponse.classID == _standUpStatus.classID) {
-                    className = classResponse.className;
+                    currentClass = classResponse;
                   }
                 }
 
@@ -73,11 +74,19 @@ class _ClassPageState extends State<ClassesPage> {
                         ),
                         child: new Padding(
                           padding: const EdgeInsets.all(16.0),
-                          child: new Text("正在上课:  $className...", style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),),
+                          child: new Text("正在上课:  ${currentClass.className}...", style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),),
                         ),
                       ),
                       onTap: () {
-
+                        Navigator.push(context, new MaterialPageRoute(
+                          builder: (context) {
+                            return new StandUpClassPage(
+                              classID: _standUpStatus.classID,
+                              wReadMWriteIndex: _standUpStatus.wReadMWriteIndex,
+                              classResponse: currentClass,
+                            );
+                          },
+                        ));
                       },
                     ),
                   );
@@ -86,6 +95,7 @@ class _ClassPageState extends State<ClassesPage> {
                     className: _classesResponse.classes[index-1].className,
                     classID: _classesResponse.classes[index-1].classID,
                     classImage: _classesResponse.classes[index-1].classImage,
+                    classroomNo: _classesResponse.classes[index-1].classroomNo,
                     itemPressesCallback: () {},
                   );
                 }
@@ -94,6 +104,7 @@ class _ClassPageState extends State<ClassesPage> {
                   className: _classesResponse.classes[index].className,
                   classID: _classesResponse.classes[index].classID,
                   classImage: _classesResponse.classes[index].classImage,
+                  classroomNo: _classesResponse.classes[index].classroomNo,
                   itemPressesCallback: () {},
                 );
               }
@@ -115,12 +126,6 @@ class _ClassPageState extends State<ClassesPage> {
     }
 
     return size;
-  }
-
-  Future<String> _getTeacherNo() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String userType = prefs.getString('teacherNo') ?? "";
-    return userType;
   }
 
   Future<void> _requestClasses() async {
@@ -165,10 +170,95 @@ class HistoryPage extends StatelessWidget {
   }
 }
 
-class MinePage extends StatelessWidget {
+class MinePage extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => _MinePageState();
+}
+
+class _MinePageState extends State {
+  TeacherResponse _teacherResponse = new TeacherResponse(classIDs: [0]);
+
+  @override
+  void initState() {
+    getTeacherNo().then((v) {
+      _requestTeacher(v);
+    });
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
-    return new Text("Mine");
+    return new Scaffold(
+      appBar: new AppBar(
+        elevation: 0,
+        actions: <Widget>[
+          new IconButton(icon: Icon(Icons.settings), onPressed: (){
+            Navigator.push(context, new MaterialPageRoute(builder: (context) {
+              return new SettingPage();
+            }));
+          })
+        ],
+      ),
+      body: new Container(
+        decoration: new BoxDecoration(
+          color: Theme.of(context).primaryColor,
+          gradient: LinearGradient(
+            colors: [Theme.of(context).primaryColor, Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.only(top: 16.0),
+        child: Column(
+          children: <Widget>[
+            new Container(
+              margin: const EdgeInsets.only(bottom: 12.0),
+              height: 108,
+              width: 108,
+              decoration: new BoxDecoration(
+                borderRadius: new BorderRadius.circular(54.0),
+                color: Colors.white,
+              ),
+              child: new ClipOval(
+                child: _teacherResponse.teacherImage != "" ? new Image.network("http://$SERVER_ADDRESS/images/${_teacherResponse.teacherImage}") : null,
+              )
+            ),
+            new Text(_teacherResponse.teacherName, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0, color: Colors.white),),
+            new Text(_teacherResponse.teacherNo, style: TextStyle(fontSize: 12.0, color: Colors.white),)
+          ],
+        ),
+      ),
+    );
   }
+
+  Future<void> _requestTeacher(String teacherNo) async {
+    Response response;
+    try {
+      response = await DioManager.instance.get("/teachers", data: { "teacher_no": teacherNo });
+    } catch(e) {
+      print(e);
+    }
+
+    if (response?.statusCode == 200) {
+      Map jsonMap = jsonDecode(response.toString());
+      TeachersResponse tsResponse = TeachersResponse.fromJson(jsonMap);
+      setState(() {
+        _teacherResponse = tsResponse.teachers[0];
+      });
+    } else {
+      Fluttertoast.showToast(
+        msg: "获取信息失败",
+        toastLength: Toast.LENGTH_SHORT,
+        timeInSecForIos: 1,
+        gravity: ToastGravity.CENTER,
+      );
+    }
+  }
+}
+
+Future<String> getTeacherNo() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String userType = prefs.getString('teacherNo') ?? "";
+  return userType;
 }

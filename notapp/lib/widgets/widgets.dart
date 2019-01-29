@@ -84,11 +84,12 @@ class FakeSearchBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 class ClassCard extends StatelessWidget {
-  ClassCard({ this.className, this.classID, this.classImage, this.itemPressesCallback });
+  ClassCard({ this.className, this.classID, this.classImage, this.classroomNo, this.itemPressesCallback });
 
   final String className;
   final int classID;
   final String classImage;
+  final String classroomNo;
   final GestureTapCallback itemPressesCallback;
 
   @override
@@ -108,7 +109,7 @@ class ClassCard extends StatelessWidget {
             new Expanded(
               child: new Container(
                 margin: const EdgeInsets.only(left: 8.0),
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
                 decoration: new BoxDecoration(
                   color: Colors.grey[100],
                   borderRadius: new BorderRadius.circular(8.0),
@@ -118,6 +119,9 @@ class ClassCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     new Text(className, style: new TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),),
+                    new Padding(padding: const EdgeInsets.only(top: 4.0),
+                      child: new Text("教室: $classroomNo", style: new TextStyle(fontSize: 12.0),),
+                    ),
                     new Padding(padding: const EdgeInsets.only(top: 4.0),
                       child: new Text("ID: $classID", style: new TextStyle(fontSize: 12.0),),
                     ),

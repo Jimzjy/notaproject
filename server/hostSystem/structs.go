@@ -118,9 +118,24 @@ type StandUpStatusTable struct {
 type StudentStatusTable struct {
 	gorm.Model
 	ClassID int
+	TeacherNo string
 	PDF string
 	FaceCountRecordID int
 	StudentStatus string //[]StudentStatusWithPage
+}
+
+type StudentStatusResponse struct {
+	UpdateTime int64 `json:"update_time"`
+	ClassID int `json:"class_id"`
+	TeacherNo string `json:"teacher_no"`
+	PDF string `json:"pdf"`
+	FaceCountRecordID int `json:"face_count_record_id"`
+	StudentStatus []StudentStatusWithPage `json:"student_status"`
+}
+
+type StudentStatusListResponse struct {
+	StudentStatus []StudentStatusResponse `json:"student_status"`
+	Total int `json:"total"`
 }
 
 type StudentStatusWithPage struct {

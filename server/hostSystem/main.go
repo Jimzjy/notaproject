@@ -90,6 +90,12 @@ func setupRouter() *gin.Engine {
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send current stand up error"})
 		}
 	})
+	router.GET("/student_status_records", func(c *gin.Context) {
+		if err := sendStudentStatusRecords(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send student status error"})
+		}
+	})
 
 
 	// 教室状态

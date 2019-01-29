@@ -303,7 +303,7 @@ class StandupDetail extends PureComponent {
           </Collapse>
         </Row>
         <Row style={{ marginTop: 24 }} >
-          <Carousel className={styles.carousel} afterChange={this.handlePageChange} ref={this.carousel}>
+          <Carousel className={styles.carousel} afterChange={this.handlePageChange} ref={(ref) => {this.carousel = ref}}>
             <div><h3>1</h3></div>
             <div><h3>2</h3></div>
             <div><h3>3</h3></div>
