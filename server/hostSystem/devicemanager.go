@@ -26,6 +26,8 @@ const (
 	UpdateStatsTime = 30
 	ImageFileDir = "images/"
 	Domain = "localhost"
+	YawAngle = 45
+	EyeClose = 80
 )
 
 var config Config
@@ -1684,17 +1686,27 @@ func standUp(c *gin.Context) (err error) {
 		}
 	}()
 
+	class, err := getClass(id)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	students, err := getStudentsByClass(id)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	studentWarningRecordList := make([]StudentWarningRecord, len(students))
+	for i := 0; i < len(studentWarningRecordList); i++ {
+		studentWarningRecordList[i].StudentNo = *students[i].StudentNo
+	}
+
 	_pdfPages := 4
 	studentsStatusWithPage := make([]StudentStatusWithPage, _pdfPages)
 	for i := 0; i < _pdfPages; i++ {
 		studentsStatusWithPage[i].PDFPage = i + 1
 	}
 	go func() {
-		class, err := getClass(id)
-		if err != nil {
-			log.Println(err)
-			return
-		}
 		camera, err := getCamerasByClassroom(class.ClassroomNo)
 		if err != nil {
 			log.Println(err)
@@ -1736,6 +1748,62 @@ func standUp(c *gin.Context) (err error) {
 			_studentsStatus, err = getStudentsStatus(camera[0].CamStreamPath, devicePath, faceRectNos)
 			if err != nil {
 				log.Println(err)
+			}
+
+			if writeChannelIndex > 0 {
+				studentWarningList := ""
+				for _, v := range _studentsStatus {
+					headPose := v.Attributes.HeadPose
+					eyesStatusL := v.Attributes.EyesStatus.LeftEyeStatus
+					eyesStatusR := v.Attributes.EyesStatus.RightEyeStatus
+
+					if math.Abs(headPose.YawAngle) > YawAngle {
+						for i := 0; i < len(studentWarningRecordList); i++ {
+							if studentWarningRecordList[i].StudentNo == v.StudentNo {
+								if studentWarningRecordList[i].LastWarning {
+									studentWarningList += v.StudentNo + ", "
+									studentWarningRecordList[i].LastWarning = false
+									studentWarningRecordList[i].Warning += 1
+								} else {
+									studentWarningRecordList[i].LastWarning = true
+								}
+								break
+							}
+						}
+						continue
+					}
+
+					if eyesStatusL.NoGlassEyeClose > EyeClose ||
+						eyesStatusL.NormalGlassEyeClose > EyeClose ||
+						eyesStatusR.NoGlassEyeClose > EyeClose ||
+						eyesStatusR.NormalGlassEyeClose > EyeClose {
+
+						for i := 0; i < len(studentWarningRecordList); i++ {
+							if studentWarningRecordList[i].StudentNo == v.StudentNo {
+								if studentWarningRecordList[i].LastWarning {
+									studentWarningList += v.StudentNo + ", "
+									studentWarningRecordList[i].LastWarning = false
+									studentWarningRecordList[i].Warning += 1
+								} else {
+									studentWarningRecordList[i].LastWarning = true
+								}
+								break
+							}
+						}
+						continue
+					}
+				}
+
+				if len(studentWarningList) > 0 {
+					_standUpPacket := StandUpPacket{
+						StudentWarningList: strings.TrimSuffix(studentWarningList, ", "),
+						StudentWarningRecordList: studentWarningToIntList(studentWarningRecordList),
+					}
+					select {
+					case standUpChannels[writeChannelIndex] <- _standUpPacket:
+					default:
+					}
+				}
 			}
 
 			if currentPDFPage > 0 {
@@ -1783,6 +1851,7 @@ func standUp(c *gin.Context) (err error) {
 
 				err = createTableItem(&StudentStatusTable{
 					ClassID: id,
+					ClassName: class.ClassName,
 					PDF: pdfUrl,
 					TeacherNo: teacherNo,
 					FaceCountRecordID: faceCountRecordID,
@@ -1802,6 +1871,8 @@ func standUp(c *gin.Context) (err error) {
 				if standUpPacket.RequestStartPacket {
 					startPacket := StandUpPacket{
 						PDFUrl: pdfUrl,
+						CurrentPDFPage: currentPDFPage,
+						StudentWarningRecordList: studentWarningToIntList(studentWarningRecordList),
 					}
 
 					if faceCountRecordID != 0 {
@@ -1964,7 +2035,11 @@ func getStudentsStatus(camStreamPath, devicePath string, faceRectNos []FaceRectT
 			standard := math.Sqrt(float64(v2.FaceRectangle.Height * v2.FaceRectangle.Height + v2.FaceRectangle.Width * v2.FaceRectangle.Width))
 
 			if dis < standard {
-				studentsStatus = append(studentsStatus, StudentStatus{StudentNo: v2.FaceToken, Attributes: v.Attributes})
+				studentsStatus = append(studentsStatus, StudentStatus{
+					StudentNo: v2.FaceToken,
+					Attributes: v.Attributes,
+					UpdateTime: time.Now().Unix(),
+				})
 			}
 		}
 	}
@@ -1984,7 +2059,11 @@ func getStudentsStatus(camStreamPath, devicePath string, faceRectNos []FaceRectT
 		}
 
 		if !detected {
-			notDetectedStudents = append(notDetectedStudents, StudentStatus{StudentNo: v.FaceToken, Attributes: notGoodStatus})
+			notDetectedStudents = append(notDetectedStudents, StudentStatus{
+				StudentNo: v.FaceToken,
+				Attributes: notGoodStatus,
+				UpdateTime: time.Now().Unix(),
+			})
 		}
 	}
 
@@ -2008,6 +2087,7 @@ func currentStandUp(c *gin.Context) (err error) {
 	return
 }
 
+// TODO("Separate Response")
 func sendStudentStatusRecords(c *gin.Context) (err error) {
 	teacherNo, ByTeacher := c.GetQuery("teacher_no")
 	classID, ByClass := c.GetQuery("class_id")
@@ -2041,6 +2121,7 @@ func sendStudentStatusRecords(c *gin.Context) (err error) {
 		studentStatusResponse[k].FaceCountRecordID = v.FaceCountRecordID
 		studentStatusResponse[k].PDF = v.PDF
 		studentStatusResponse[k].UpdateTime = v.UpdatedAt.Unix()
+		studentStatusResponse[k].ClassName = v.ClassName
 
 		var _studentStatusWithPage []StudentStatusWithPage
 		err = json.Unmarshal([]byte(v.StudentStatus), &_studentStatusWithPage)
@@ -2428,5 +2509,15 @@ func sendPostForm(params url.Values, url string) (body []byte, err error) {
 	if err != nil {
 		return
 	}
+	return
+}
+
+func studentWarningToIntList(record []StudentWarningRecord) (list []int) {
+	list = make([]int, len(record))
+
+	for k, v := range record {
+		list[k] = v.Warning
+	}
+
 	return
 }

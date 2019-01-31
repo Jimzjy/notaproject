@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:notapp/models/models.dart';
+import 'package:notapp/models/json_models.dart';
+import 'package:charts_flutter/flutter.dart' as charts;
 
 class FakeSearchBar extends StatelessWidget implements PreferredSizeWidget {
   FakeSearchBar({this.left, this.right, this.text, this.onSearchBarClick});
@@ -137,3 +139,95 @@ class ClassCard extends StatelessWidget {
   }
 }
 
+class HistoryCard extends StatelessWidget {
+  HistoryCard({this.studentStatusResponse, this.itemPressesCallback});
+
+  final StudentStatusResponse studentStatusResponse;
+  final GestureTapCallback itemPressesCallback;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      child: new Container(
+        height: 88,
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+        padding: const EdgeInsets.all(8.0),
+        decoration: new BoxDecoration(borderRadius: BorderRadius.circular(8.0), color: Colors.white),
+        child: new Container(
+          decoration: new BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: new BorderRadius.circular(8.0),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: new Column(
+            children: <Widget>[
+              new Expanded(child: new Text(studentStatusResponse.className, style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),)),
+              new Expanded(child: new Text("Class ID: " + studentStatusResponse.classID.toString(), style: TextStyle(fontSize: 14.0),)),
+              new Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: <Widget>[
+                  new Text(
+                    _getTimeString(new DateTime.fromMillisecondsSinceEpoch(studentStatusResponse.updateTime * 1000)),
+                    style: TextStyle(fontSize: 12.0),
+                  ),
+                ],
+              )
+            ],
+            crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+        ),
+      ),
+      onTap: itemPressesCallback,
+    );
+  }
+
+  String _getTimeString(DateTime date) {
+    return "${date.month} 月 ${date.day} 日  周${_numToCS(date.weekday)}  ${date.hour}:${date.minute}";
+  }
+
+  String _numToCS(int n) {
+    String s = "";
+
+    switch (n) {
+      case 1:
+        s = "一";
+        break;
+      case 2:
+        s = "二";
+        break;
+      case 3:
+        s = "三";
+        break;
+      case 4:
+        s = "四";
+        break;
+      case 5:
+        s = "五";
+        break;
+      case 6:
+        s = "六";
+        break;
+      case 7:
+        s = "日";
+        break;
+    }
+    return s;
+  }
+}
+
+// https://google.github.io/charts/flutter/example/pie_charts/donut
+class DonutPieChart extends StatelessWidget {
+  final List<charts.Series> seriesList;
+  final bool animate;
+
+  DonutPieChart(this.seriesList, {this.animate = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return new charts.PieChart(seriesList,
+        animate: animate,
+        // Configure the width of the pie slices to 60px. The remaining space in
+        // the chart will be left as a hole in the center.
+        defaultRenderer: new charts.ArcRendererConfig(arcWidth: 30));
+  }
+}

@@ -40,7 +40,6 @@ class _ClassPageState extends State<ClassesPage> {
         text: "搜索",
       ),
       body: new Container(
-        constraints: BoxConstraints(minHeight: double.infinity, minWidth: double.infinity),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [primaryColor, Colors.white],
@@ -81,8 +80,7 @@ class _ClassPageState extends State<ClassesPage> {
                         Navigator.push(context, new MaterialPageRoute(
                           builder: (context) {
                             return new StandUpClassPage(
-                              classID: _standUpStatus.classID,
-                              wReadMWriteIndex: _standUpStatus.wReadMWriteIndex,
+                              wsParam: "/stand_up_mobile?class_id=${_standUpStatus.classID}&write_channel_index=${_standUpStatus.wReadMWriteIndex}",
                               classResponse: currentClass,
                             );
                           },
@@ -138,9 +136,11 @@ class _ClassPageState extends State<ClassesPage> {
       print(err);
     }
 
+    ClassesResponse classesResponse;
+    StandUpStatus standUpStatus;
     if (response1?.statusCode == 200) {
       Map jsonMap = jsonDecode(response1.toString());
-      _classesResponse = ClassesResponse.fromJson(jsonMap);
+      classesResponse = ClassesResponse.fromJson(jsonMap);
     } else {
       Fluttertoast.showToast(
         msg: "获取课程列表失败",
@@ -152,21 +152,92 @@ class _ClassPageState extends State<ClassesPage> {
 
     if (response2?.statusCode == 200) {
       Map jsonMap = jsonDecode(response2.toString());
-      _standUpStatus = StandUpStatus.fromJson(jsonMap);
+      standUpStatus = StandUpStatus.fromJson(jsonMap);
     } else {
-      _standUpStatus = null;
+      standUpStatus = null;
     }
 
-    setState(() {});
+    setState(() {
+      _classesResponse = classesResponse;
+      _standUpStatus = standUpStatus;
+    });
     return;
   }
 }
 
-class HistoryPage extends StatelessWidget {
+class HistoryPage extends StatefulWidget {
+  @override
+  State<StatefulWidget> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends State<HistoryPage> {
+  String _teacherNo = "";
+  List<StudentStatusResponse> _studentStatus;
+
+  @override
+  void initState() {
+    getTeacherNo().then((v){
+      _teacherNo = v;
+      _requestStudentStatusRecord();
+    });
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
-    return new Text("History");
+    return new Scaffold(
+      appBar: new FakeSearchBar(
+        text: "搜索",
+      ),
+      body: new Container(
+        decoration: new BoxDecoration(
+          color: Theme.of(context).primaryColor,
+          gradient: LinearGradient(
+            colors: [Theme.of(context).primaryColor, Colors.white],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: new RefreshIndicator(
+          child: ListView.builder(
+            itemCount: _studentStatus?.length ?? 0,
+            itemBuilder: (BuildContext context, int index) {
+              return new HistoryCard(
+                studentStatusResponse: _studentStatus[index],
+                itemPressesCallback: () {
+
+                },
+              );
+            },
+          ),
+          onRefresh: _requestStudentStatusRecord,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _requestStudentStatusRecord() async {
+    Response response;
+    try {
+      response = await DioManager.instance.get("/student_status_records", data: { "teacher_no": _teacherNo });
+    } catch(e) {
+      print(e);
+    }
+
+    if (response?.statusCode == 200) {
+      Map jsonMap = jsonDecode(response.toString());
+      setState(() {
+        _studentStatus = StudentStatusListResponse.fromJson(jsonMap).studentStatus;
+      });
+    } else {
+      Fluttertoast.showToast(
+        msg: "获取记录失败",
+        toastLength: Toast.LENGTH_SHORT,
+        timeInSecForIos: 1,
+        gravity: ToastGravity.CENTER,
+      );
+    }
+    return;
   }
 }
 

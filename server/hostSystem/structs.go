@@ -87,9 +87,9 @@ type EyesStatus struct {
 }
 
 type HeadPose struct {
-	YawAngle float32 `json:"yaw_angle"`
-	PitchAngle float32 `json:"pitch_angle"`
-	RollAngle float32 `json:"roll_angle"`
+	YawAngle float64 `json:"yaw_angle"`
+	PitchAngle float64 `json:"pitch_angle"`
+	RollAngle float64 `json:"roll_angle"`
 }
 
 type JsonMessage struct {
@@ -105,6 +105,14 @@ type StandUpPacket struct {
 	ChangePDFPage int
 	PDFUrl string
 	RequestStartPacket bool
+	StudentWarningList string
+	StudentWarningRecordList []int
+}
+
+type StudentWarningRecord struct {
+	StudentNo string
+	Warning int
+	LastWarning bool
 }
 
 type StandUpStatusTable struct {
@@ -118,6 +126,7 @@ type StandUpStatusTable struct {
 type StudentStatusTable struct {
 	gorm.Model
 	ClassID int
+	ClassName string
 	TeacherNo string
 	PDF string
 	FaceCountRecordID int
@@ -127,6 +136,7 @@ type StudentStatusTable struct {
 type StudentStatusResponse struct {
 	UpdateTime int64 `json:"update_time"`
 	ClassID int `json:"class_id"`
+	ClassName string `json:"class_name"`
 	TeacherNo string `json:"teacher_no"`
 	PDF string `json:"pdf"`
 	FaceCountRecordID int `json:"face_count_record_id"`
@@ -144,6 +154,7 @@ type StudentStatusWithPage struct {
 }
 
 type StudentStatus struct {
+	UpdateTime int64 `json:"update_time"`
 	StudentNo string `json:"student_no"`
 	Attributes Attributes `json:"attributes"`
 }

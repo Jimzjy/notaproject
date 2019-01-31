@@ -2,38 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:notapp/models/json_models.dart';
 import 'package:notapp/widgets/widgets.dart';
 import 'stand_up_tabs.dart';
+import 'package:dio/dio.dart';
+import 'package:notapp/models/models.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:web_socket_channel/io.dart';
 import 'dart:convert';
+import 'package:flushbar/flushbar.dart';
 
 class StandUpClassPage extends StatefulWidget {
   StandUpClassPage({
-    this.classID,
-    this.wReadMWriteIndex,
+    this.wsParam,
     this.classResponse,
   });
 
-  final int classID;
-  final int wReadMWriteIndex;
+  final String wsParam;
   final ClassResponse classResponse;
 
   @override
   State<StatefulWidget> createState() => _StandUpClassPageState(
-    classID: classID,
-    wReadMWriteIndex: wReadMWriteIndex,
+    wsParam: wsParam,
     classResponse: classResponse,
   );
 }
 
 class _StandUpClassPageState extends State<StandUpClassPage> {
   _StandUpClassPageState({
-    this.classID,
-    this.wReadMWriteIndex,
+    this.wsParam,
     this.classResponse,
   });
 
-  int classID;
-  int wReadMWriteIndex;
+  String wsParam;
   ClassResponse classResponse;
+  List<StudentResponse> studentsResponse;
+  List<int> studentWarning;
+  List<String> studentWarningRecord;
+  IOWebSocketChannel _channel;
+  FaceCountRecordResponse faceCountRecordResponse;
 
   static const _tabs = <Tab>[
     const Tab(text: "学生信息",),
@@ -42,18 +46,28 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
     const Tab(text: "演示文稿",),
   ];
 
-  final _tabContents = <Widget>[
-    new StudentsTab(),
-    new FaceCountTab(),
-    new StudentStatusTab(),
-    new PDFPage(),
-  ];
+  @override
+  void initState() {
+    _requestStudents().then((v){
+      _wsConnect();
+    });
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    if (_channel != null) {
+      _channel.sink.close();
+    }
+    _channel = null;
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
       appBar: new AppBar(
-        title: new Text(classResponse.className),
+        title: new Text("正在上课: ${classResponse.className}", overflow: TextOverflow.ellipsis,),
         elevation: 0.0,
       ),
       body: new NestedScrollView(
@@ -93,19 +107,130 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
           children: <Widget>[
             new TabBar(tabs: _tabs, isScrollable: false, labelColor: Theme.of(context).primaryColor,),
             new Expanded(
-              child: new TabBarView(children: _tabContents),
+              child: new TabBarView(children: _tabs.map((tab) {
+                switch(tab.text) {
+                  case "学生信息":
+                    return new StudentsTab(
+                      students: studentsResponse,
+                      warning: studentWarning,
+                    );
+                  case "点名信息":
+                    return new FaceCountTab(faceCountRecordResponse);
+                  case "学生状态":
+                    return new StudentStatusTab(studentWarningRecord);
+                  case "演示文稿":
+                    return new PDFTab();
+                }
+              }).toList()),
             ),
           ],
         ),
       ),
     );
   }
+
+  Future<void> _requestStudents() async {
+    Response response;
+    try {
+      response = await DioManager.instance.get("/students", data: { "class_id": classResponse.classID });
+    } catch(e) {
+      print(e);
+    }
+
+    StudentsResponse stuResp;
+    if (response?.statusCode == 200) {
+      Map jsonMap = jsonDecode(response.toString());
+      stuResp = StudentsResponse.fromJson(jsonMap);
+    } else {
+      Fluttertoast.showToast(
+        msg: "获取学生信息失败",
+        toastLength: Toast.LENGTH_SHORT,
+        timeInSecForIos: 1,
+        gravity: ToastGravity.CENTER,
+      );
+      Navigator.pop(context);
+    }
+
+    setState(() {
+      studentsResponse = stuResp.students;
+      studentWarning = List.filled(studentsResponse.length, 0);
+    });
+    return;
+  }
+
+  _requestFaceCountRecord(int recordID) async {
+    Response response;
+    try {
+      response = await DioManager.instance.get("/face_count_record", data: { "record_id": recordID });
+    } catch(e) {
+      print(e);
+    }
+
+    FaceCountRecordResponse faceCRR;
+    if (response?.statusCode == 200) {
+      Map jsonMap = jsonDecode(response.toString());
+      faceCRR = FaceCountRecordResponse.fromJson(jsonMap);
+
+      setState(() {
+        faceCountRecordResponse = faceCRR;
+      });
+    }
+  }
+
+  _wsConnect() async {
+    try {
+      _channel = new IOWebSocketChannel.connect("ws://" + SERVER_ADDRESS + wsParam);
+      _channel.stream.listen((message) {
+        print(message);
+
+        Map jsonMap = jsonDecode(message.toString());
+        StandUpPacket sup = StandUpPacket.fromJson(jsonMap);
+
+        setState(() {
+          _handleStudentWarringChange(sup);
+        });
+
+        _handleFaceCount(sup);
+        _handleStudentWarringNotification(sup);
+      });
+    } catch(e) {
+      print(e);
+    }
+  }
+
+  _handleStudentWarringChange(StandUpPacket sup) {
+    if (sup.studentWarningRecordList != null && sup.studentWarningRecordList.length == studentWarning.length) {
+        studentWarning = sup.studentWarningRecordList;
+    }
+
+    if (sup.studentWarringList != null && sup.studentWarringList.length > 0) {
+      studentWarningRecord.add(sup.studentWarringList);
+    }
+  }
+
+  _handleStudentWarringNotification(StandUpPacket sup) {
+    if (sup.studentWarringList != null && sup.studentWarringList.length > 0) {
+      Flushbar()
+        ..title = "以下学生可能未认真听课(学号): "
+        ..message = sup.studentWarringList
+        ..icon = Icon(Icons.error_outline, color: Theme.of(context).primaryColor, size: 28,)
+        ..duration = Duration(seconds: 3)
+        ..show(context);
+    }
+  }
+
+  _handleFaceCount(StandUpPacket sup) {
+    if (sup.faceCountClose) {
+      _requestFaceCountRecord(sup.faceCountRecordID);
+    }
+  }
 }
 
 class SettingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
-    return new Text("setting");
+    return new Scaffold(
+      body: new Text("setting"),
+    );
   }
 }

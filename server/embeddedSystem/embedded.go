@@ -303,6 +303,8 @@ func sendFacePostForm(faceSetToken string, face FaceAnalyzeResult, _personData P
 	err = json.Unmarshal(body, &searchFaceResponse)
 	if err != nil {
 		log.Println(err)
+		_personData.Face.FaceRectangle = face.FaceRectangle
+		chPersonData <- _personData
 		return
 	}
 	results := searchFaceResponse.Results
@@ -571,7 +573,12 @@ func sendPostForm(params url.Values, url string) (body []byte, err error) {
 	if err != nil {
 		return
 	}
-	defer response.Body.Close()
+	defer func() {
+		err = response.Body.Close()
+		if err != nil {
+			return
+		}
+	}()
 
 	if response.StatusCode != http.StatusOK {
 		err = fmt.Errorf("response not ok for send post form")

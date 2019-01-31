@@ -13,6 +13,8 @@ class StandUpPacket {
     this.changePDFPage = 0,
     this.pdfUrl = "",
     this.requestStartPacket = false,
+    this.studentWarringList = "",
+    this.studentWarningRecordList,
   });
 
   @JsonKey(name: 'WReadMWriteIndex')
@@ -38,6 +40,12 @@ class StandUpPacket {
 
   @JsonKey(name: 'RequestStartPacket')
   bool requestStartPacket;
+
+  @JsonKey(name: 'StudentWarringList')
+  String studentWarringList;
+
+  @JsonKey(name: 'StudentWarringRecordList')
+  List<int> studentWarningRecordList;
 
   factory StandUpPacket.fromJson(Map<String, dynamic> json) => _$StandUpPacketFromJson(json);
   Map<String, dynamic> toJson() => _$StandUpPacketToJson(this);
@@ -181,4 +189,158 @@ class TeachersResponse {
 
   factory TeachersResponse.fromJson(Map<String, dynamic> json) => _$TeachersResponseFromJson(json);
   Map<String, dynamic> toJson() => _$TeachersResponseToJson(this);
+}
+
+@JsonSerializable()
+class Emotion {
+  Emotion({this.sadness, this.neutral, this.disgust, this.anger, this.surprise,
+    this.fear, this.happiness});
+
+  double sadness;
+  double neutral;
+  double disgust;
+  double anger;
+  double surprise;
+  double fear;
+  double happiness;
+
+  factory Emotion.fromJson(Map<String, dynamic> json) => _$EmotionFromJson(json);
+  Map<String, dynamic> toJson() => _$EmotionToJson(this);
+}
+
+@JsonSerializable()
+class EyeStatus {
+  EyeStatus({this.noGlassEyeClose, this.normalGlassEyeClose});
+
+  @JsonKey(name: "no_glass_eye_close")
+  double noGlassEyeClose;
+  @JsonKey(name: "normal_glass_eye_close")
+  double normalGlassEyeClose;
+
+  factory EyeStatus.fromJson(Map<String, dynamic> json) => _$EyeStatusFromJson(json);
+  Map<String, dynamic> toJson() => _$EyeStatusToJson(this);
+}
+
+@JsonSerializable()
+class HeadPose {
+  HeadPose({this.yawAngle, this.pitchAngle, this.rollAngle});
+
+  @JsonKey(name: "yaw_angle")
+  double yawAngle;
+  @JsonKey(name: "pitch_angle")
+  double pitchAngle;
+  @JsonKey(name: "roll_angle")
+  double rollAngle;
+
+  factory HeadPose.fromJson(Map<String, dynamic> json) => _$HeadPoseFromJson(json);
+  Map<String, dynamic> toJson() => _$HeadPoseToJson(this);
+}
+
+@JsonSerializable()
+class Attributes {
+  Attributes({this.emotion, this.eyeStatus, this.headPose});
+
+  Emotion emotion;
+  @JsonKey(name: "eyes_status")
+  EyeStatus eyeStatus;
+  @JsonKey(name: "head_pose")
+  HeadPose headPose;
+
+  factory Attributes.fromJson(Map<String, dynamic> json) => _$AttributesFromJson(json);
+  Map<String, dynamic> toJson() => _$AttributesToJson(this);
+}
+
+@JsonSerializable()
+class StudentStatus {
+  StudentStatus({this.updateTime, this.studentNo, this.attributes});
+
+  @JsonKey(name: "update_time")
+  int updateTime;
+  @JsonKey(name: "student_no")
+  String studentNo;
+  Attributes attributes;
+
+  factory StudentStatus.fromJson(Map<String, dynamic> json) => _$StudentStatusFromJson(json);
+  Map<String, dynamic> toJson() => _$StudentStatusToJson(this);
+}
+
+@JsonSerializable()
+class StudentStatusWithPage {
+  StudentStatusWithPage({this.pdfPage, this.studentStatus});
+
+  @JsonKey(name: "pdf_page")
+  int pdfPage;
+  @JsonKey(name: "students_status")
+  List<StudentStatus> studentStatus;
+
+  factory StudentStatusWithPage.fromJson(Map<String, dynamic> json) => _$StudentStatusWithPageFromJson(json);
+  Map<String, dynamic> toJson() => _$StudentStatusWithPageToJson(this);
+}
+
+@JsonSerializable()
+class StudentStatusResponse {
+  StudentStatusResponse({this.updateTime, this.classID, this.className, this.teacherNo, this.pdf,
+    this.faceCountRecordID, this.studentStatus});
+
+  @JsonKey(name: "update_time")
+  int updateTime;
+  @JsonKey(name: "class_id")
+  int classID;
+  @JsonKey(name: "class_name")
+  String className;
+  @JsonKey(name: "teacher_no")
+  String teacherNo;
+  String pdf;
+  @JsonKey(name: "face_count_record_id")
+  int faceCountRecordID;
+  @JsonKey(name: "student_status")
+  List<StudentStatusWithPage> studentStatus;
+
+  factory StudentStatusResponse.fromJson(Map<String, dynamic> json) => _$StudentStatusResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$StudentStatusResponseToJson(this);
+}
+
+@JsonSerializable()
+class StudentStatusListResponse {
+  StudentStatusListResponse({this.studentStatus, this.total});
+
+  @JsonKey(name: "student_status")
+  List<StudentStatusResponse> studentStatus;
+  int total;
+
+  factory StudentStatusListResponse.fromJson(Map<String, dynamic> json) => _$StudentStatusListResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$StudentStatusListResponseToJson(this);
+}
+
+@JsonSerializable()
+class StudentResponse {
+  StudentResponse({this.studentNo, this.studentName, this.faceToken,
+      this.studentImage, this.studentPassword, this.classIDs});
+
+  @JsonKey(name: "student_no")
+  String studentNo;
+  @JsonKey(name: "student_name")
+  String studentName;
+  @JsonKey(name: "face_token")
+  String faceToken;
+  @JsonKey(name: "student_image")
+  String studentImage;
+  @JsonKey(name: "student_password")
+  String studentPassword;
+  @JsonKey(name: "class_ids")
+  List<int> classIDs;
+
+  factory StudentResponse.fromJson(Map<String, dynamic> json) => _$StudentResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$StudentResponseToJson(this);
+}
+
+@JsonSerializable()
+class StudentsResponse {
+  StudentsResponse({this.students, this.total});
+
+  List<StudentResponse> students;
+  int total;
+
+  factory StudentsResponse.fromJson(Map<String, dynamic> json) => _$StudentsResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$StudentsResponseToJson(this);
 }

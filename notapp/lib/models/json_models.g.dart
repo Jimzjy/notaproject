@@ -15,7 +15,11 @@ StandUpPacket _$StandUpPacketFromJson(Map<String, dynamic> json) {
       currentPDFPage: json['CurrentPDFPage'] as int,
       changePDFPage: json['ChangePDFPage'] as int,
       pdfUrl: json['PDFUrl'] as String,
-      requestStartPacket: json['RequestStartPacket'] as bool);
+      requestStartPacket: json['RequestStartPacket'] as bool,
+      studentWarringList: json['StudentWarringList'] as String,
+      studentWarningRecordList: (json['StudentWarringRecordList'] as List)
+          ?.map((e) => e as int)
+          ?.toList());
 }
 
 Map<String, dynamic> _$StandUpPacketToJson(StandUpPacket instance) =>
@@ -27,7 +31,9 @@ Map<String, dynamic> _$StandUpPacketToJson(StandUpPacket instance) =>
       'CurrentPDFPage': instance.currentPDFPage,
       'ChangePDFPage': instance.changePDFPage,
       'PDFUrl': instance.pdfUrl,
-      'RequestStartPacket': instance.requestStartPacket
+      'RequestStartPacket': instance.requestStartPacket,
+      'StudentWarringList': instance.studentWarringList,
+      'StudentWarringRecordList': instance.studentWarningRecordList
     };
 
 ClassResponse _$ClassResponseFromJson(Map<String, dynamic> json) {
@@ -170,3 +176,181 @@ TeachersResponse _$TeachersResponseFromJson(Map<String, dynamic> json) {
 
 Map<String, dynamic> _$TeachersResponseToJson(TeachersResponse instance) =>
     <String, dynamic>{'teachers': instance.teachers, 'total': instance.total};
+
+Emotion _$EmotionFromJson(Map<String, dynamic> json) {
+  return Emotion(
+      sadness: (json['sadness'] as num)?.toDouble(),
+      neutral: (json['neutral'] as num)?.toDouble(),
+      disgust: (json['disgust'] as num)?.toDouble(),
+      anger: (json['anger'] as num)?.toDouble(),
+      surprise: (json['surprise'] as num)?.toDouble(),
+      fear: (json['fear'] as num)?.toDouble(),
+      happiness: (json['happiness'] as num)?.toDouble());
+}
+
+Map<String, dynamic> _$EmotionToJson(Emotion instance) => <String, dynamic>{
+      'sadness': instance.sadness,
+      'neutral': instance.neutral,
+      'disgust': instance.disgust,
+      'anger': instance.anger,
+      'surprise': instance.surprise,
+      'fear': instance.fear,
+      'happiness': instance.happiness
+    };
+
+EyeStatus _$EyeStatusFromJson(Map<String, dynamic> json) {
+  return EyeStatus(
+      noGlassEyeClose: (json['no_glass_eye_close'] as num)?.toDouble(),
+      normalGlassEyeClose: (json['normal_glass_eye_close'] as num)?.toDouble());
+}
+
+Map<String, dynamic> _$EyeStatusToJson(EyeStatus instance) => <String, dynamic>{
+      'no_glass_eye_close': instance.noGlassEyeClose,
+      'normal_glass_eye_close': instance.normalGlassEyeClose
+    };
+
+HeadPose _$HeadPoseFromJson(Map<String, dynamic> json) {
+  return HeadPose(
+      yawAngle: (json['yaw_angle'] as num)?.toDouble(),
+      pitchAngle: (json['pitch_angle'] as num)?.toDouble(),
+      rollAngle: (json['roll_angle'] as num)?.toDouble());
+}
+
+Map<String, dynamic> _$HeadPoseToJson(HeadPose instance) => <String, dynamic>{
+      'yaw_angle': instance.yawAngle,
+      'pitch_angle': instance.pitchAngle,
+      'roll_angle': instance.rollAngle
+    };
+
+Attributes _$AttributesFromJson(Map<String, dynamic> json) {
+  return Attributes(
+      emotion: json['emotion'] == null
+          ? null
+          : Emotion.fromJson(json['emotion'] as Map<String, dynamic>),
+      eyeStatus: json['eyes_status'] == null
+          ? null
+          : EyeStatus.fromJson(json['eyes_status'] as Map<String, dynamic>),
+      headPose: json['head_pose'] == null
+          ? null
+          : HeadPose.fromJson(json['head_pose'] as Map<String, dynamic>));
+}
+
+Map<String, dynamic> _$AttributesToJson(Attributes instance) =>
+    <String, dynamic>{
+      'emotion': instance.emotion,
+      'eyes_status': instance.eyeStatus,
+      'head_pose': instance.headPose
+    };
+
+StudentStatus _$StudentStatusFromJson(Map<String, dynamic> json) {
+  return StudentStatus(
+      updateTime: json['update_time'] as int,
+      studentNo: json['student_no'] as String,
+      attributes: json['attributes'] == null
+          ? null
+          : Attributes.fromJson(json['attributes'] as Map<String, dynamic>));
+}
+
+Map<String, dynamic> _$StudentStatusToJson(StudentStatus instance) =>
+    <String, dynamic>{
+      'update_time': instance.updateTime,
+      'student_no': instance.studentNo,
+      'attributes': instance.attributes
+    };
+
+StudentStatusWithPage _$StudentStatusWithPageFromJson(
+    Map<String, dynamic> json) {
+  return StudentStatusWithPage(
+      pdfPage: json['pdf_page'] as int,
+      studentStatus: (json['students_status'] as List)
+          ?.map((e) => e == null
+              ? null
+              : StudentStatus.fromJson(e as Map<String, dynamic>))
+          ?.toList());
+}
+
+Map<String, dynamic> _$StudentStatusWithPageToJson(
+        StudentStatusWithPage instance) =>
+    <String, dynamic>{
+      'pdf_page': instance.pdfPage,
+      'students_status': instance.studentStatus
+    };
+
+StudentStatusResponse _$StudentStatusResponseFromJson(
+    Map<String, dynamic> json) {
+  return StudentStatusResponse(
+      updateTime: json['update_time'] as int,
+      classID: json['class_id'] as int,
+      className: json['class_name'] as String,
+      teacherNo: json['teacher_no'] as String,
+      pdf: json['pdf'] as String,
+      faceCountRecordID: json['face_count_record_id'] as int,
+      studentStatus: (json['student_status'] as List)
+          ?.map((e) => e == null
+              ? null
+              : StudentStatusWithPage.fromJson(e as Map<String, dynamic>))
+          ?.toList());
+}
+
+Map<String, dynamic> _$StudentStatusResponseToJson(
+        StudentStatusResponse instance) =>
+    <String, dynamic>{
+      'update_time': instance.updateTime,
+      'class_id': instance.classID,
+      'class_name': instance.className,
+      'teacher_no': instance.teacherNo,
+      'pdf': instance.pdf,
+      'face_count_record_id': instance.faceCountRecordID,
+      'student_status': instance.studentStatus
+    };
+
+StudentStatusListResponse _$StudentStatusListResponseFromJson(
+    Map<String, dynamic> json) {
+  return StudentStatusListResponse(
+      studentStatus: (json['student_status'] as List)
+          ?.map((e) => e == null
+              ? null
+              : StudentStatusResponse.fromJson(e as Map<String, dynamic>))
+          ?.toList(),
+      total: json['total'] as int);
+}
+
+Map<String, dynamic> _$StudentStatusListResponseToJson(
+        StudentStatusListResponse instance) =>
+    <String, dynamic>{
+      'student_status': instance.studentStatus,
+      'total': instance.total
+    };
+
+StudentResponse _$StudentResponseFromJson(Map<String, dynamic> json) {
+  return StudentResponse(
+      studentNo: json['student_no'] as String,
+      studentName: json['student_name'] as String,
+      faceToken: json['face_token'] as String,
+      studentImage: json['student_image'] as String,
+      studentPassword: json['student_password'] as String,
+      classIDs: (json['class_ids'] as List)?.map((e) => e as int)?.toList());
+}
+
+Map<String, dynamic> _$StudentResponseToJson(StudentResponse instance) =>
+    <String, dynamic>{
+      'student_no': instance.studentNo,
+      'student_name': instance.studentName,
+      'face_token': instance.faceToken,
+      'student_image': instance.studentImage,
+      'student_password': instance.studentPassword,
+      'class_ids': instance.classIDs
+    };
+
+StudentsResponse _$StudentsResponseFromJson(Map<String, dynamic> json) {
+  return StudentsResponse(
+      students: (json['students'] as List)
+          ?.map((e) => e == null
+              ? null
+              : StudentResponse.fromJson(e as Map<String, dynamic>))
+          ?.toList(),
+      total: json['total'] as int);
+}
+
+Map<String, dynamic> _$StudentsResponseToJson(StudentsResponse instance) =>
+    <String, dynamic>{'students': instance.students, 'total': instance.total};

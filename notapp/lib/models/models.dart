@@ -26,3 +26,10 @@ class IconFontCN {
       matchTextDirection: true
   );
 }
+
+class PieChartData {
+  int domain;
+  num data;
+
+  PieChartData(this.domain, this.data);
+}
