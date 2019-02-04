@@ -45,6 +45,9 @@ var upgrader = websocket.Upgrader{
 }
 var ncnnnetFace = C.newNcnnnet()
 var ncnnnetBody = C.newNcnnnet()
+var client = &http.Client{
+	Timeout: time.Second * 5,
+}
 
 func main() {
 	var err error
@@ -431,7 +434,6 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 	request, err := http.NewRequest("POST", url, body)
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 
-	client := http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
 		return
@@ -516,13 +518,12 @@ func uploadStatsRequest() error {
 		return err
 	}
 
-	url := fmt.Sprintf("http://%v/classroom_stats", config.ServerAddr)
-	request, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStats))
+	_url := fmt.Sprintf("http://%v/classroom_stats", config.ServerAddr)
+	request, err := http.NewRequest("POST", _url, bytes.NewBuffer(jsonStats))
 	if err != nil {
 		return err
 	}
 	request.Header.Add("Content-Type", "application/json")
-	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
 		return err
@@ -568,28 +569,16 @@ func getFloatPrecision(number float64, p string) float64 {
 	return numberP
 }
 
+// still have problem of server hangs, maybe it's the bug of nanoPi
 func sendPostForm(params url.Values, url string) (body []byte, err error) {
-	response, err := http.PostForm(url, params)
+	response, err := client.PostForm(url, params)
 	if err != nil {
 		return
 	}
-	defer func() {
-		err = response.Body.Close()
-		if err != nil {
-			return
-		}
-	}()
+	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		err = fmt.Errorf("response not ok for send post form")
-
-		//var body2 []byte
-		//body2, err = ioutil.ReadAll(response.Body)
-		//if err != nil {
-		//	return
-		//}
-		//err = fmt.Errorf(string(body2))
-
 		return
 	}
 

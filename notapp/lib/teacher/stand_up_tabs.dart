@@ -30,8 +30,9 @@ class StudentsTab extends StatelessWidget {
 }
 
 class FaceCountTab extends StatelessWidget {
-  FaceCountTab(this.faceCountRecordResponse);
+  FaceCountTab(this.faceCountRecordResponse, this.students);
 
+  final List<StudentResponse> students;
   final FaceCountRecordResponse faceCountRecordResponse;
 
   @override
@@ -39,7 +40,7 @@ class FaceCountTab extends StatelessWidget {
     if (faceCountRecordResponse != null) {
       List<PieChartData> data = [
         new PieChartData(0, faceCountRecordResponse.studentInClassCount),
-        new PieChartData(0, faceCountRecordResponse.studentCount - faceCountRecordResponse.studentInClassCount),
+        new PieChartData(1, faceCountRecordResponse.studentNotInClass.length),
       ];
 
       List<charts.Series> seriesList = [
@@ -51,20 +52,41 @@ class FaceCountTab extends StatelessWidget {
         )
       ];
 
+      List<StudentFaceCountResultCard> studentNotIn = [];
+      for (var sni in faceCountRecordResponse.studentNotInClass) {
+        for (var s in students) {
+          if (sni == s.studentNo) {
+            studentNotIn.add(new StudentFaceCountResultCard(s.studentName, s.studentImage));
+            break;
+          }
+        }
+      }
+
       return new Container(
         padding: const EdgeInsets.all(8),
         child: ListView(
           children: <Widget>[
             new Container(
-              padding: const EdgeInsets.all(8),
+              height: 260,
               child: new Stack(
                 alignment: Alignment.center,
                 children: <Widget>[
                   new DonutPieChart(seriesList),
-                  new Text("${faceCountRecordResponse.studentInClassCount}/${faceCountRecordResponse.studentCount}",
-                    style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold),),
+                  new Text("${faceCountRecordResponse.studentInClassCount} / ${faceCountRecordResponse.studentCount}",
+                    style: TextStyle(color: Colors.grey[800], fontWeight: FontWeight.bold, fontSize: 18),),
                 ],
               ),
+            ),
+            new Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(12.0),
+              margin: const EdgeInsets.symmetric(vertical: 4.0),
+              decoration: new BoxDecoration(color: Colors.grey[200], borderRadius: new BorderRadius.circular(8.0)),
+              child: new Text("未到学生", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
+            ),
+            new Wrap(
+              alignment: WrapAlignment.center,
+              children: studentNotIn,
             )
           ],
         )
@@ -95,9 +117,32 @@ class StudentStatusTab extends StatelessWidget {
 }
 
 class PDFTab extends StatelessWidget {
+  PDFTab(this.pageCallBack, this.page);
+
+  final PageCallBack pageCallBack;
+  final int page;
+
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
-    return new Text("pdf");
+    return new Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        new Container(
+          height: 150,
+          width: 200,
+          child: new Text(page.toString(), style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),),
+        ),
+        new Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[
+            new IconButton(icon: Icon(Icons.navigate_before), onPressed: () => pageCallBack(1)),
+            new IconButton(icon: Icon(Icons.navigate_next), onPressed: () => pageCallBack(-1))
+          ],
+        ),
+      ],
+    );
   }
 }
+
+typedef PageCallBack = Function(int page);

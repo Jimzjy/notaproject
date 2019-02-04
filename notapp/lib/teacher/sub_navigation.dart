@@ -38,6 +38,7 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
   List<String> studentWarningRecord;
   IOWebSocketChannel _channel;
   FaceCountRecordResponse faceCountRecordResponse;
+  int page = 0;
 
   static const _tabs = <Tab>[
     const Tab(text: "学生信息",),
@@ -115,11 +116,13 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
                       warning: studentWarning,
                     );
                   case "点名信息":
-                    return new FaceCountTab(faceCountRecordResponse);
+                    return new FaceCountTab(faceCountRecordResponse, studentsResponse);
                   case "学生状态":
                     return new StudentStatusTab(studentWarningRecord);
                   case "演示文稿":
-                    return new PDFTab();
+                    return new PDFTab((int p) {
+                      _channel?.sink?.add(jsonEncode(StandUpPacket(changePDFPage: p)));
+                    }, page);
                 }
               }).toList()),
             ),
@@ -192,6 +195,7 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
 
         _handleFaceCount(sup);
         _handleStudentWarringNotification(sup);
+        _handlePageChange(sup);
       });
     } catch(e) {
       print(e);
@@ -224,6 +228,12 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
       _requestFaceCountRecord(sup.faceCountRecordID);
     }
   }
+
+  _handlePageChange(StandUpPacket sup) {
+    if (sup.currentPDFPage > 0) {
+      page = sup.currentPDFPage;
+    }
+  }
 }
 
 class SettingPage extends StatelessWidget {
@@ -231,6 +241,43 @@ class SettingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return new Scaffold(
       body: new Text("setting"),
+    );
+  }
+}
+
+class NormalClassPage extends StatefulWidget {
+  NormalClassPage({this.classResponse});
+
+  final ClassResponse classResponse;
+
+  @override
+  State<StatefulWidget> createState() {
+    return _NormalClassPageState(classResponse: this.classResponse);
+  }
+}
+
+class _NormalClassPageState extends State<NormalClassPage> {
+  _NormalClassPageState({this.classResponse});
+
+  ClassResponse classResponse;
+
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+      appBar: new AppBar(
+        title: new Text(classResponse.className, overflow: TextOverflow.ellipsis,),
+        elevation: 0.0,
+      ),
+      body: new NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            new SliverList(delegate: new SliverChildListDelegate([
+              _buildClassCard()
+            ]))
+          ];
+        },
+        body: _buildTabs(),
+      ),
     );
   }
 }

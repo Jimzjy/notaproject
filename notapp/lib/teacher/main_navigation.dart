@@ -94,7 +94,7 @@ class _ClassPageState extends State<ClassesPage> {
                     classID: _classesResponse.classes[index-1].classID,
                     classImage: _classesResponse.classes[index-1].classImage,
                     classroomNo: _classesResponse.classes[index-1].classroomNo,
-                    itemPressesCallback: () {},
+                    itemPressesCallback: () { _navigateToClassPage(context); },
                   );
                 }
               } else {
@@ -103,7 +103,7 @@ class _ClassPageState extends State<ClassesPage> {
                   classID: _classesResponse.classes[index].classID,
                   classImage: _classesResponse.classes[index].classImage,
                   classroomNo: _classesResponse.classes[index].classroomNo,
-                  itemPressesCallback: () {},
+                  itemPressesCallback: () { _navigateToClassPage(context); },
                 );
               }
             },
@@ -162,6 +162,14 @@ class _ClassPageState extends State<ClassesPage> {
       _standUpStatus = standUpStatus;
     });
     return;
+  }
+
+  _navigateToClassPage(BuildContext context) {
+    Navigator.push(context, new MaterialPageRoute(
+      builder: (context) {
+        return new NormalClassPage();
+      },
+    ));
   }
 }
 

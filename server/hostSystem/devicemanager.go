@@ -37,6 +37,12 @@ var upgrader = websocket.Upgrader{
 	},
 }
 var standUpChannels []chan StandUpPacket
+var client = &http.Client{
+	Timeout: time.Second * 5,
+}
+var longTimeoutClient = &http.Client{
+	Timeout: time.Second * 25,
+}
 
 func getConfig(config *Config) error {
 	var err error
@@ -1399,16 +1405,20 @@ func sendFaceCountRecord(c *gin.Context) (err error) {
 	var studentInClass []string
 	for _, v1 := range faceRectTokens {
 		for _, v2 := range students {
-			if v1.FaceToken == v2.FaceToken {
-				studentInClass = append(studentInClass, v2.FaceToken)
+			if checkIfInStringSlice(studentInClass, v1.FaceToken) {
+				break
+			}
+
+			if v1.FaceToken == *v2.StudentNo {
+				studentInClass = append(studentInClass, v1.FaceToken)
 				break
 			}
 		}
 	}
 	var studentNotIn []string
-	for _, v1 := range students {
-		if !checkIfInStringSlice(studentInClass, v1.FaceToken) && !checkIfInStringSlice(studentNotIn, v1.FaceToken) {
-			studentNotIn = append(studentNotIn, v1.FaceToken)
+	for _, v := range students {
+		if !checkIfInStringSlice(studentInClass, *v.StudentNo) && !checkIfInStringSlice(studentNotIn, *v.StudentNo) {
+			studentNotIn = append(studentNotIn, *v.StudentNo)
 		}
 	}
 
@@ -2015,7 +2025,7 @@ func standUpMobile(c *gin.Context) (err error) {
 }
 
 func getStudentsStatus(camStreamPath, devicePath string, faceRectNos []FaceRectToken) (studentsStatus []StudentStatus, err error) {
-	body, err := sendPostForm(url.Values{
+	body, err := sendLongTimeoutPostForm(url.Values{
 		"cam_stream_path": {camStreamPath},
 	}, devicePath)
 	if err != nil {
@@ -2363,7 +2373,6 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 	}
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 
-	client := http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
 		return
@@ -2494,7 +2503,26 @@ func updateFaceSetByStudentNos(oldStudents []Student, newStudentNos []string, fa
 }
 
 func sendPostForm(params url.Values, url string) (body []byte, err error) {
-	response, err := http.PostForm(url, params)
+	response, err := client.PostForm(url, params)
+	if err != nil {
+		return
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		err = fmt.Errorf(response.Status)
+		return
+	}
+
+	body, err = ioutil.ReadAll(response.Body)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func sendLongTimeoutPostForm(params url.Values, url string) (body []byte, err error) {
+	response, err := longTimeoutClient.PostForm(url, params)
 	if err != nil {
 		return
 	}

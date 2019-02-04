@@ -231,3 +231,33 @@ class DonutPieChart extends StatelessWidget {
         defaultRenderer: new charts.ArcRendererConfig(arcWidth: 30));
   }
 }
+
+class StudentFaceCountResultCard extends StatelessWidget {
+  StudentFaceCountResultCard(this.studentName, this.studentImage);
+
+  final String studentName;
+  final String studentImage;
+
+  @override
+  Widget build(BuildContext context) {
+    return new Card(
+      shape: new RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      elevation: 1.0,
+      child: new Container(
+        height: 60,
+        width: 110,
+        padding: const EdgeInsets.all(8.0),
+        child: new Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[
+            new CircleAvatar(
+              backgroundImage: new Image.network("http://$SERVER_ADDRESS/images/$studentImage").image,
+            ),
+            new Text(studentName, style: TextStyle(fontSize: 14),),
+          ],
+        ),
+      ),
+    );
+  }
+}
