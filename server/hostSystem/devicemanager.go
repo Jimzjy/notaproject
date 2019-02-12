@@ -26,8 +26,8 @@ const (
 	UpdateStatsTime = 30
 	ImageFileDir = "images/"
 	Domain = "localhost"
-	YawAngle = 45
-	EyeClose = 80
+	PitchAngle = 10
+	EyeClose = 10
 )
 
 var config Config
@@ -1711,6 +1711,7 @@ func standUp(c *gin.Context) (err error) {
 		studentWarningRecordList[i].StudentNo = *students[i].StudentNo
 	}
 
+	// TODO("set pdf")
 	_pdfPages := 4
 	studentsStatusWithPage := make([]StudentStatusWithPage, _pdfPages)
 	for i := 0; i < _pdfPages; i++ {
@@ -1767,7 +1768,7 @@ func standUp(c *gin.Context) (err error) {
 					eyesStatusL := v.Attributes.EyesStatus.LeftEyeStatus
 					eyesStatusR := v.Attributes.EyesStatus.RightEyeStatus
 
-					if math.Abs(headPose.YawAngle) > YawAngle {
+					if math.Abs(headPose.PitchAngle) > PitchAngle {
 						for i := 0; i < len(studentWarningRecordList); i++ {
 							if studentWarningRecordList[i].StudentNo == v.StudentNo {
 								if studentWarningRecordList[i].LastWarning {
@@ -1849,7 +1850,7 @@ func standUp(c *gin.Context) (err error) {
 					close(standUpChannels[writeChannelIndex])
 				}
 
-				var finalStudentStatus []byte
+				var finalStudentStatus, finalStudentWarningRecordList []byte
 				//finalFaceCountResult, err = json.Marshal(faceRectNos)
 				//if err != nil {
 				//	log.Println(err)
@@ -1859,13 +1860,20 @@ func standUp(c *gin.Context) (err error) {
 					log.Println(err)
 				}
 
+				finalStudentWarningRecordList, err = json.Marshal(studentWarningRecordList)
+				if err != nil {
+					log.Println(err)
+				}
+
 				err = createTableItem(&StudentStatusTable{
 					ClassID: id,
 					ClassName: class.ClassName,
 					PDF: pdfUrl,
+					PDFPageCount: _pdfPages,
 					TeacherNo: teacherNo,
 					FaceCountRecordID: faceCountRecordID,
 					StudentStatus: string(finalStudentStatus),
+					StudentWarningRecordList: string(finalStudentWarningRecordList),
 				})
 				if err != nil {
 					log.Println(err)
@@ -1886,8 +1894,8 @@ func standUp(c *gin.Context) (err error) {
 					}
 
 					if faceCountRecordID != 0 {
-						standUpPacket.FaceCountRecordID = faceCountRecordID
-						standUpPacket.FaceCountClose = true
+						startPacket.FaceCountRecordID = faceCountRecordID
+						startPacket.FaceCountClose = true
 					}
 
 					standUpChannels[writeChannelIndex] <- startPacket
@@ -2130,6 +2138,7 @@ func sendStudentStatusRecords(c *gin.Context) (err error) {
 		studentStatusResponse[k].ClassID = v.ClassID
 		studentStatusResponse[k].FaceCountRecordID = v.FaceCountRecordID
 		studentStatusResponse[k].PDF = v.PDF
+		studentStatusResponse[k].PDFPageCount = v.PDFPageCount
 		studentStatusResponse[k].UpdateTime = v.UpdatedAt.Unix()
 		studentStatusResponse[k].ClassName = v.ClassName
 
@@ -2139,6 +2148,13 @@ func sendStudentStatusRecords(c *gin.Context) (err error) {
 			return
 		}
 		studentStatusResponse[k].StudentStatus = _studentStatusWithPage
+
+		var _studentWarningRecordList []StudentWarningRecord
+		err = json.Unmarshal([]byte(v.StudentWarningRecordList), &_studentWarningRecordList)
+		if err != nil {
+			return
+		}
+		studentStatusResponse[k].StudentWarningRecordList = _studentWarningRecordList
 	}
 
 	c.JSON(http.StatusOK, StudentStatusListResponse{

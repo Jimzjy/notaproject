@@ -16,8 +16,8 @@ StandUpPacket _$StandUpPacketFromJson(Map<String, dynamic> json) {
       changePDFPage: json['ChangePDFPage'] as int,
       pdfUrl: json['PDFUrl'] as String,
       requestStartPacket: json['RequestStartPacket'] as bool,
-      studentWarringList: json['StudentWarringList'] as String,
-      studentWarningRecordList: (json['StudentWarringRecordList'] as List)
+      studentWarningList: json['StudentWarningList'] as String,
+      studentWarningRecordList: (json['StudentWarningRecordList'] as List)
           ?.map((e) => e as int)
           ?.toList());
 }
@@ -32,8 +32,8 @@ Map<String, dynamic> _$StandUpPacketToJson(StandUpPacket instance) =>
       'ChangePDFPage': instance.changePDFPage,
       'PDFUrl': instance.pdfUrl,
       'RequestStartPacket': instance.requestStartPacket,
-      'StudentWarringList': instance.studentWarringList,
-      'StudentWarringRecordList': instance.studentWarningRecordList
+      'StudentWarningList': instance.studentWarningList,
+      'StudentWarningRecordList': instance.studentWarningRecordList
     };
 
 ClassResponse _$ClassResponseFromJson(Map<String, dynamic> json) {
@@ -227,19 +227,19 @@ Attributes _$AttributesFromJson(Map<String, dynamic> json) {
       emotion: json['emotion'] == null
           ? null
           : Emotion.fromJson(json['emotion'] as Map<String, dynamic>),
-      eyeStatus: json['eyes_status'] == null
+      eyeStatus: json['eyestatus'] == null
           ? null
-          : EyeStatus.fromJson(json['eyes_status'] as Map<String, dynamic>),
-      headPose: json['head_pose'] == null
+          : EyeStatus.fromJson(json['eyestatus'] as Map<String, dynamic>),
+      headPose: json['headpose'] == null
           ? null
-          : HeadPose.fromJson(json['head_pose'] as Map<String, dynamic>));
+          : HeadPose.fromJson(json['headpose'] as Map<String, dynamic>));
 }
 
 Map<String, dynamic> _$AttributesToJson(Attributes instance) =>
     <String, dynamic>{
       'emotion': instance.emotion,
-      'eyes_status': instance.eyeStatus,
-      'head_pose': instance.headPose
+      'eyestatus': instance.eyeStatus,
+      'headpose': instance.headPose
     };
 
 StudentStatus _$StudentStatusFromJson(Map<String, dynamic> json) {
@@ -276,6 +276,21 @@ Map<String, dynamic> _$StudentStatusWithPageToJson(
       'students_status': instance.studentStatus
     };
 
+StudentWarningRecord _$StudentWarningRecordFromJson(Map<String, dynamic> json) {
+  return StudentWarningRecord(
+      studentNo: json['student_no'] as String,
+      warning: json['warning'] as int,
+      lastWarning: json['last_warning'] as bool);
+}
+
+Map<String, dynamic> _$StudentWarningRecordToJson(
+        StudentWarningRecord instance) =>
+    <String, dynamic>{
+      'student_no': instance.studentNo,
+      'warning': instance.warning,
+      'last_warning': instance.lastWarning
+    };
+
 StudentStatusResponse _$StudentStatusResponseFromJson(
     Map<String, dynamic> json) {
   return StudentStatusResponse(
@@ -289,7 +304,13 @@ StudentStatusResponse _$StudentStatusResponseFromJson(
           ?.map((e) => e == null
               ? null
               : StudentStatusWithPage.fromJson(e as Map<String, dynamic>))
-          ?.toList());
+          ?.toList(),
+      studentWarningRecordList: (json['student_warning_record_list'] as List)
+          ?.map((e) => e == null
+              ? null
+              : StudentWarningRecord.fromJson(e as Map<String, dynamic>))
+          ?.toList())
+    ..pdfPageCount = json['pdf_page_count'] as int;
 }
 
 Map<String, dynamic> _$StudentStatusResponseToJson(
@@ -300,8 +321,10 @@ Map<String, dynamic> _$StudentStatusResponseToJson(
       'class_name': instance.className,
       'teacher_no': instance.teacherNo,
       'pdf': instance.pdf,
+      'pdf_page_count': instance.pdfPageCount,
       'face_count_record_id': instance.faceCountRecordID,
-      'student_status': instance.studentStatus
+      'student_status': instance.studentStatus,
+      'student_warning_record_list': instance.studentWarningRecordList
     };
 
 StudentStatusListResponse _$StudentStatusListResponseFromJson(

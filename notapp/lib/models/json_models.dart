@@ -13,7 +13,7 @@ class StandUpPacket {
     this.changePDFPage = 0,
     this.pdfUrl = "",
     this.requestStartPacket = false,
-    this.studentWarringList = "",
+    this.studentWarningList = "",
     this.studentWarningRecordList,
   });
 
@@ -41,10 +41,10 @@ class StandUpPacket {
   @JsonKey(name: 'RequestStartPacket')
   bool requestStartPacket;
 
-  @JsonKey(name: 'StudentWarringList')
-  String studentWarringList;
+  @JsonKey(name: 'StudentWarningList')
+  String studentWarningList;
 
-  @JsonKey(name: 'StudentWarringRecordList')
+  @JsonKey(name: 'StudentWarningRecordList')
   List<int> studentWarningRecordList;
 
   factory StandUpPacket.fromJson(Map<String, dynamic> json) => _$StandUpPacketFromJson(json);
@@ -204,6 +204,26 @@ class Emotion {
   double fear;
   double happiness;
 
+  int getEmotion() {
+    double max = sadness;
+    int em = 0;
+    var setMax = (double input, int emotion) {
+      if (input > max) {
+        em = emotion;
+        max = input;
+      }
+    };
+
+    setMax(neutral, 1);
+    setMax(disgust, 2);
+    setMax(anger, 3);
+    setMax(surprise, 4);
+    setMax(fear, 5);
+    setMax(happiness, 6);
+
+    return em;
+  }
+
   factory Emotion.fromJson(Map<String, dynamic> json) => _$EmotionFromJson(json);
   Map<String, dynamic> toJson() => _$EmotionToJson(this);
 }
@@ -241,9 +261,9 @@ class Attributes {
   Attributes({this.emotion, this.eyeStatus, this.headPose});
 
   Emotion emotion;
-  @JsonKey(name: "eyes_status")
+  @JsonKey(name: "eyestatus")
   EyeStatus eyeStatus;
-  @JsonKey(name: "head_pose")
+  @JsonKey(name: "headpose")
   HeadPose headPose;
 
   factory Attributes.fromJson(Map<String, dynamic> json) => _$AttributesFromJson(json);
@@ -278,9 +298,24 @@ class StudentStatusWithPage {
 }
 
 @JsonSerializable()
+class StudentWarningRecord {
+  StudentWarningRecord({this.studentNo, this.warning, this.lastWarning});
+
+  @JsonKey(name: "student_no")
+  String studentNo;
+  @JsonKey(name: "warning")
+  int warning;
+  @JsonKey(name: "last_warning")
+  bool lastWarning;
+
+  factory StudentWarningRecord.fromJson(Map<String, dynamic> json) => _$StudentWarningRecordFromJson(json);
+  Map<String, dynamic> toJson() => _$StudentWarningRecordToJson(this);
+}
+
+@JsonSerializable()
 class StudentStatusResponse {
   StudentStatusResponse({this.updateTime, this.classID, this.className, this.teacherNo, this.pdf,
-    this.faceCountRecordID, this.studentStatus});
+    this.faceCountRecordID, this.studentStatus, this.studentWarningRecordList});
 
   @JsonKey(name: "update_time")
   int updateTime;
@@ -291,10 +326,14 @@ class StudentStatusResponse {
   @JsonKey(name: "teacher_no")
   String teacherNo;
   String pdf;
+  @JsonKey(name: "pdf_page_count")
+  int pdfPageCount;
   @JsonKey(name: "face_count_record_id")
   int faceCountRecordID;
   @JsonKey(name: "student_status")
   List<StudentStatusWithPage> studentStatus;
+  @JsonKey(name: "student_warning_record_list")
+  List<StudentWarningRecord> studentWarningRecordList;
 
   factory StudentStatusResponse.fromJson(Map<String, dynamic> json) => _$StudentStatusResponseFromJson(json);
   Map<String, dynamic> toJson() => _$StudentStatusResponseToJson(this);

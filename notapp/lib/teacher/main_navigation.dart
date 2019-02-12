@@ -94,7 +94,7 @@ class _ClassPageState extends State<ClassesPage> {
                     classID: _classesResponse.classes[index-1].classID,
                     classImage: _classesResponse.classes[index-1].classImage,
                     classroomNo: _classesResponse.classes[index-1].classroomNo,
-                    itemPressesCallback: () { _navigateToClassPage(context); },
+                    itemPressesCallback: () { _navigateToRecordPage(context, index); },
                   );
                 }
               } else {
@@ -103,7 +103,7 @@ class _ClassPageState extends State<ClassesPage> {
                   classID: _classesResponse.classes[index].classID,
                   classImage: _classesResponse.classes[index].classImage,
                   classroomNo: _classesResponse.classes[index].classroomNo,
-                  itemPressesCallback: () { _navigateToClassPage(context); },
+                  itemPressesCallback: () { _navigateToRecordPage(context, index); },
                 );
               }
             },
@@ -164,10 +164,10 @@ class _ClassPageState extends State<ClassesPage> {
     return;
   }
 
-  _navigateToClassPage(BuildContext context) {
+  _navigateToRecordPage(BuildContext context, int index) {
     Navigator.push(context, new MaterialPageRoute(
       builder: (context) {
-        return new NormalClassPage();
+        return new ClassRecordPage(_classesResponse.classes[index].classID);
       },
     ));
   }
@@ -213,7 +213,7 @@ class _HistoryPageState extends State<HistoryPage> {
               return new HistoryCard(
                 studentStatusResponse: _studentStatus[index],
                 itemPressesCallback: () {
-
+                  _navigateToClassPage(context, index);
                 },
               );
             },
@@ -222,6 +222,16 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       ),
     );
+  }
+
+  _navigateToClassPage(BuildContext context, int index) {
+    Navigator.push(context, new MaterialPageRoute(
+      builder: (context) {
+        return new NormalClassPage(
+          studentStatusResponse: _studentStatus[index],
+        );
+      },
+    ));
   }
 
   Future<void> _requestStudentStatusRecord() async {

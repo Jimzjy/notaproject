@@ -29,6 +29,41 @@ class StudentsTab extends StatelessWidget {
   }
 }
 
+class RecordStudentsTab extends StatelessWidget {
+  RecordStudentsTab({this.students, this.warningRecord, this.tapCallBack});
+
+  final List<StudentResponse> students;
+  final List<StudentWarningRecord> warningRecord;
+  final PageCallBack tapCallBack;
+
+  @override
+  Widget build(BuildContext context) {
+    // TODO("sort students and warning records")
+
+    if (students == null || warningRecord == null) {
+      return Container();
+    }
+
+    return new Container(
+      child: new ListView.builder(
+        itemCount: warningRecord?.length ?? 0,
+        itemBuilder: (BuildContext context, int index) {
+          return GestureDetector(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundImage: Image.network("http://$SERVER_ADDRESS/images/${students[index].studentImage}").image,
+              ),
+              title: new Text(students[index].studentName),
+              trailing: new Text("警告: ${warningRecord[index].warning}", style: TextStyle(color: warningRecord[index].warning > 0 ? Colors.red[400] : Colors.green[400]),),
+            ),
+            onTap: () => tapCallBack(index),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class FaceCountTab extends StatelessWidget {
   FaceCountTab(this.faceCountRecordResponse, this.students);
 
@@ -100,7 +135,7 @@ class FaceCountTab extends StatelessWidget {
 class StudentStatusTab extends StatelessWidget {
   StudentStatusTab(this.studentWarningRecord);
 
-  final List<String> studentWarningRecord;
+  final List<StudentWarningRecordTime> studentWarningRecord;
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +144,32 @@ class StudentStatusTab extends StatelessWidget {
       itemBuilder: (BuildContext context, int index) {
         return new Card(
           margin: const EdgeInsets.fromLTRB(8.0, 4.0, 8.0, 4.0),
-          child: new Text(studentWarningRecord[index]),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              children: <Widget>[
+                Text.rich(TextSpan(
+                    children: [
+                      TextSpan(
+                          text: "学生可能未认真听课(学号): \n",
+                          style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 16.0)
+                      ),
+                      TextSpan(
+                          text: studentWarningRecord[index].studentNos + "\n",
+                          style: TextStyle(fontSize: 16.0)
+                      ),
+                    ]
+                )),
+                new Container(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    "${studentWarningRecord[index].dateTime.hour}:${studentWarningRecord[index].dateTime.minute}:${studentWarningRecord[index].dateTime.second}",
+                    style: TextStyle(fontSize: 12.0, color: Colors.grey),
+                  ),
+                )
+              ],
+            )
+          ),
         );
       },
     );
@@ -125,19 +185,24 @@ class PDFTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         new Container(
+          decoration: new BoxDecoration(
+            borderRadius: new BorderRadius.circular(8),
+            color: Theme.of(context).primaryColor
+          ),
+          alignment: Alignment.center,
           height: 150,
           width: 200,
-          child: new Text(page.toString(), style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),),
+          child: new Text(page.toString(), style: TextStyle(fontSize: 24, color: Colors.white, fontWeight: FontWeight.bold),),
         ),
         new Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: <Widget>[
-            new IconButton(icon: Icon(Icons.navigate_before), onPressed: () => pageCallBack(1)),
-            new IconButton(icon: Icon(Icons.navigate_next), onPressed: () => pageCallBack(-1))
+            new IconButton(icon: Icon(Icons.navigate_before), onPressed: () => pageCallBack(-1)),
+            new IconButton(icon: Icon(Icons.navigate_next), onPressed: () => pageCallBack(1))
           ],
         ),
       ],

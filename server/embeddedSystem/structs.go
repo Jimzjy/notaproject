@@ -29,8 +29,8 @@ type FaceAnalyzeResult struct {
 
 type Attributes struct {
 	Emotion Emotion `json:"emotion"`
-	EyesStatus EyesStatus `json:"eyes_status"`
-	HeadPose HeadPose `json:"head_pose"`
+	EyesStatus EyesStatus `json:"eyestatus"`
+	HeadPose HeadPose `json:"headpose"`
 }
 
 type Emotion struct {

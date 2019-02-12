@@ -62,8 +62,8 @@ type FaceAnalyzeResult struct {
 
 type Attributes struct {
 	Emotion Emotion `json:"emotion"`
-	EyesStatus EyesStatus `json:"eyes_status"`
-	HeadPose HeadPose `json:"head_pose"`
+	EyesStatus EyesStatus `json:"eyestatus"`
+	HeadPose HeadPose `json:"headpose"`
 }
 
 type Emotion struct {
@@ -110,9 +110,9 @@ type StandUpPacket struct {
 }
 
 type StudentWarningRecord struct {
-	StudentNo string
-	Warning int
-	LastWarning bool
+	StudentNo string `json:"student_no"`
+	Warning int `json:"warning"`
+	LastWarning bool `json:"last_warning"`
 }
 
 type StandUpStatusTable struct {
@@ -129,8 +129,10 @@ type StudentStatusTable struct {
 	ClassName string
 	TeacherNo string
 	PDF string
+	PDFPageCount int
 	FaceCountRecordID int
 	StudentStatus string //[]StudentStatusWithPage
+	StudentWarningRecordList string //[]StudentWarningRecord
 }
 
 type StudentStatusResponse struct {
@@ -139,8 +141,10 @@ type StudentStatusResponse struct {
 	ClassName string `json:"class_name"`
 	TeacherNo string `json:"teacher_no"`
 	PDF string `json:"pdf"`
+	PDFPageCount int `json:"pdf_page_count"`
 	FaceCountRecordID int `json:"face_count_record_id"`
 	StudentStatus []StudentStatusWithPage `json:"student_status"`
+	StudentWarningRecordList []StudentWarningRecord `json:"student_warning_record_list"`
 }
 
 type StudentStatusListResponse struct {
