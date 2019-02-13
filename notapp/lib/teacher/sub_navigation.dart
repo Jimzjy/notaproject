@@ -10,8 +10,8 @@ import 'dart:convert';
 import 'package:flushbar/flushbar.dart';
 import 'dart:math';
 
-const PITCH_ANGLE = 45;
-const EYE_CLOSE = 80;
+const PITCH_ANGLE = 30;
+const EYE_CLOSE = 50;
 
 class StandUpClassPage extends StatefulWidget {
   StandUpClassPage({
@@ -183,6 +183,7 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
         _handleFaceCount(sup);
         _handleStudentWarringNotification(sup);
         _handlePageChange(sup);
+        _handleSayGoodbye(sup);
       });
     } catch(e) {
       print(e);
@@ -220,6 +221,44 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
     if (sup.currentPDFPage > 0) {
       page = sup.currentPDFPage;
     }
+  }
+
+  _handleSayGoodbye(StandUpPacket sup) {
+    if (sup.sayGoodbye) {
+      if (_channel != null) {
+        _channel.sink.close();
+      }
+      _channel = null;
+
+      _goodByeDialog();
+    }
+  }
+
+  Future<void> _goodByeDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Text('已下课, 是否留在当前页面?'),
+          actions: <Widget>[
+            FlatButton(
+              child: Text('否'),
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(this.context);
+              },
+            ),
+            FlatButton(
+              child: Text('是'),
+              onPressed: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -543,6 +582,7 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
   double cubeAngle = 0.0;
   Animation<double> animation;
   AnimationController controller;
+  bool first = true;
 
   // front left right top bottom back
   final List<Container> studentHeadCube = [];
@@ -586,12 +626,16 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
       ),
       body: Container(
         color: Theme.of(context).primaryColor,
-        child: ListView(
-          children: <Widget>[
-            _buildStudentCard(),
-            _buildStudentStatusCard(),
-            //_buildPageStatusList(),
-          ],
+        child: NestedScrollView(
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              new SliverList(delegate: new SliverChildListDelegate([
+                _buildStudentCard(),
+                _buildStudentStatusCard(),
+              ]))
+            ];
+          },
+          body: _buildPageStatusList(),
         ),
       )
     );
@@ -641,10 +685,8 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
   }
 
   Widget _buildStudentStatusCard() {
-    var _backColor = Colors.grey[200];
     var _date = DateTime.fromMillisecondsSinceEpoch(studentStatusSeparateByTime.studentStatusAttributes[currentStatusCount].updateTime * 1000);
-
-    var angle = cubeAngle * animation.value;
+    var angle = first ? cubeAngle : cubeAngle * animation.value;
     var cosAR = cubeRadius * cos(angle);
     var sinAR = cubeRadius * sin(angle);
 
@@ -669,7 +711,7 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
                 alignment: Alignment.center,
                 child: IconButton(icon: Icon(Icons.navigate_next), onPressed: () => _changeStudentStatus(1)),
               ), right: 0, top: 0, bottom: 0,),
-              new Positioned(child: new Text("${_date.hour}:${_date.minute}:${_date.second}", textAlign: TextAlign.center,),
+              new Positioned(child: new Text("${_date.hour}:${_date.minute}:${_date.second}", textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold),),
                 bottom: 0, left: 0, right: 0,),
             ],
           )
@@ -768,6 +810,7 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
     }
 
     _changeCubeState();
+    first = false;
     controller.forward(from: 0.0);
   }
 
@@ -781,8 +824,8 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
 
     list.add(Container(
       height: 24,
-      decoration: BoxDecoration(color: Colors.grey[200]),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+      decoration: BoxDecoration(color: Colors.grey[100]),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
       alignment: Alignment.centerLeft,
       child: Text("第 ${index + 1} 页", style: TextStyle(fontWeight: FontWeight.bold),),
     ));
@@ -791,14 +834,14 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
       var _date = DateTime.fromMillisecondsSinceEpoch(page[i].updateTime * 1000);
 
       list.add(Container(
-        height: 40,
-        padding: const EdgeInsets.all(8.0),
+        height: 48,
+        margin: const EdgeInsets.only(top: 8.0),
         child: new Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
-            Expanded(child: Icon(IconFontCN.Emotion[page[i].attributes.emotion.getEmotion()], size: 24,), flex: 1,),
+            Expanded(child: Icon(IconFontCN.Emotion[page[i].attributes.emotion.getEmotion()], size: 30,), flex: 1,),
             Expanded(child: _buildStatusCards(page[i].attributes), flex: 3,),
-            Expanded(child: Text("${_date.hour}:${_date.minute}"), flex: 1,),
+            Expanded(child: Text("${_date.hour}:${_date.minute}:${_date.second}"), flex: 1,),
           ],
         ),
       ));
@@ -810,6 +853,7 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
   Widget _buildStatusTag(String text, Color color) {
     return Container(
       padding: const EdgeInsets.all(4.0),
+      margin: const EdgeInsets.only(right: 6.0),
       decoration: BoxDecoration(color: color, borderRadius: BorderRadius.all(Radius.circular(4.0))),
       child: Text(text, style: TextStyle(fontSize: 13.0, color: Colors.white),),
     );
@@ -820,9 +864,12 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
 
     list.add(_buildStatusTag(EMOTION_TEXT[attributes.emotion.getEmotion()], Colors.blue[400]));
     if (attributes.headPose.pitchAngle > PITCH_ANGLE) {
-      list.add(_buildStatusTag("低头", Colors.amber));
+      list.add(_buildStatusTag("低头", Colors.amber[700]));
     }
-    if (attributes.eyeStatus.noGlassEyeClose > EYE_CLOSE) {
+    if (attributes.eyesStatus.leftEyeStatus.noGlassEyeClose > EYE_CLOSE ||
+        attributes.eyesStatus.leftEyeStatus.normalGlassEyeClose > EYE_CLOSE ||
+        attributes.eyesStatus.rightEyeStatus.noGlassEyeClose > EYE_CLOSE ||
+        attributes.eyesStatus.rightEyeStatus.normalGlassEyeClose > EYE_CLOSE) {
       list.add(_buildStatusTag("闭眼", Colors.red[300]));
     }
 
@@ -832,11 +879,17 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
   }
 
   Widget _buildPageStatusList() {
-    return ListView.builder(itemBuilder: (BuildContext context, int index) {
-      return Column(
-        children: _buildPageStatus(index),
-      );
-    });
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
+      child: Container(
+        padding: const EdgeInsets.all(8.0),
+        child: ListView.builder(itemBuilder: (BuildContext context, int index) {
+          return Column(
+            children: _buildPageStatus(index),
+          );
+        }, itemCount: studentStatusSeparate.studentStatusAttributesWithPage.length,),
+      ),
+    );
   }
 }
 

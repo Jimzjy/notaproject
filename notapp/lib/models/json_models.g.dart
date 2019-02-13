@@ -19,7 +19,8 @@ StandUpPacket _$StandUpPacketFromJson(Map<String, dynamic> json) {
       studentWarningList: json['StudentWarningList'] as String,
       studentWarningRecordList: (json['StudentWarningRecordList'] as List)
           ?.map((e) => e as int)
-          ?.toList());
+          ?.toList(),
+      sayGoodbye: json['SayGoodbye'] as bool);
 }
 
 Map<String, dynamic> _$StandUpPacketToJson(StandUpPacket instance) =>
@@ -33,7 +34,8 @@ Map<String, dynamic> _$StandUpPacketToJson(StandUpPacket instance) =>
       'PDFUrl': instance.pdfUrl,
       'RequestStartPacket': instance.requestStartPacket,
       'StudentWarningList': instance.studentWarningList,
-      'StudentWarningRecordList': instance.studentWarningRecordList
+      'StudentWarningRecordList': instance.studentWarningRecordList,
+      'SayGoodbye': instance.sayGoodbye
     };
 
 ClassResponse _$ClassResponseFromJson(Map<String, dynamic> json) {
@@ -209,6 +211,23 @@ Map<String, dynamic> _$EyeStatusToJson(EyeStatus instance) => <String, dynamic>{
       'normal_glass_eye_close': instance.normalGlassEyeClose
     };
 
+EyesStatus _$EyesStatusFromJson(Map<String, dynamic> json) {
+  return EyesStatus(
+      leftEyeStatus: json['left_eye_status'] == null
+          ? null
+          : EyeStatus.fromJson(json['left_eye_status'] as Map<String, dynamic>),
+      rightEyeStatus: json['right_eye_status'] == null
+          ? null
+          : EyeStatus.fromJson(
+              json['right_eye_status'] as Map<String, dynamic>));
+}
+
+Map<String, dynamic> _$EyesStatusToJson(EyesStatus instance) =>
+    <String, dynamic>{
+      'left_eye_status': instance.leftEyeStatus,
+      'right_eye_status': instance.rightEyeStatus
+    };
+
 HeadPose _$HeadPoseFromJson(Map<String, dynamic> json) {
   return HeadPose(
       yawAngle: (json['yaw_angle'] as num)?.toDouble(),
@@ -227,9 +246,9 @@ Attributes _$AttributesFromJson(Map<String, dynamic> json) {
       emotion: json['emotion'] == null
           ? null
           : Emotion.fromJson(json['emotion'] as Map<String, dynamic>),
-      eyeStatus: json['eyestatus'] == null
+      eyesStatus: json['eyestatus'] == null
           ? null
-          : EyeStatus.fromJson(json['eyestatus'] as Map<String, dynamic>),
+          : EyesStatus.fromJson(json['eyestatus'] as Map<String, dynamic>),
       headPose: json['headpose'] == null
           ? null
           : HeadPose.fromJson(json['headpose'] as Map<String, dynamic>));
@@ -238,7 +257,7 @@ Attributes _$AttributesFromJson(Map<String, dynamic> json) {
 Map<String, dynamic> _$AttributesToJson(Attributes instance) =>
     <String, dynamic>{
       'emotion': instance.emotion,
-      'eyestatus': instance.eyeStatus,
+      'eyestatus': instance.eyesStatus,
       'headpose': instance.headPose
     };
 

@@ -15,6 +15,7 @@ class StandUpPacket {
     this.requestStartPacket = false,
     this.studentWarningList = "",
     this.studentWarningRecordList,
+    this.sayGoodbye = false,
   });
 
   @JsonKey(name: 'WReadMWriteIndex')
@@ -46,6 +47,9 @@ class StandUpPacket {
 
   @JsonKey(name: 'StudentWarningRecordList')
   List<int> studentWarningRecordList;
+
+  @JsonKey(name: 'SayGoodbye')
+  bool sayGoodbye;
 
   factory StandUpPacket.fromJson(Map<String, dynamic> json) => _$StandUpPacketFromJson(json);
   Map<String, dynamic> toJson() => _$StandUpPacketToJson(this);
@@ -242,6 +246,18 @@ class EyeStatus {
 }
 
 @JsonSerializable()
+class EyesStatus {
+  @JsonKey(name: "left_eye_status")
+  EyeStatus leftEyeStatus;
+  @JsonKey(name: "right_eye_status")
+  EyeStatus rightEyeStatus;
+
+  EyesStatus({this.leftEyeStatus, this.rightEyeStatus});
+  factory EyesStatus.fromJson(Map<String, dynamic> json) => _$EyesStatusFromJson(json);
+  Map<String, dynamic> toJson() => _$EyesStatusToJson(this);
+}
+
+@JsonSerializable()
 class HeadPose {
   HeadPose({this.yawAngle, this.pitchAngle, this.rollAngle});
 
@@ -258,11 +274,11 @@ class HeadPose {
 
 @JsonSerializable()
 class Attributes {
-  Attributes({this.emotion, this.eyeStatus, this.headPose});
+  Attributes({this.emotion, this.eyesStatus, this.headPose});
 
   Emotion emotion;
   @JsonKey(name: "eyestatus")
-  EyeStatus eyeStatus;
+  EyesStatus eyesStatus;
   @JsonKey(name: "headpose")
   HeadPose headPose;
 

@@ -29,7 +29,7 @@ func main() {
 func setupRouter() *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.Default())
-	router.MaxMultipartMemory = 2 << 20
+	router.MaxMultipartMemory = 20 << 20
 
 	// 班级
 	router.POST("/classes", func(c *gin.Context) {
@@ -248,6 +248,7 @@ func setupRouter() *gin.Engine {
 	})
 	router.POST("/config", func(c *gin.Context) {
 		if err := setConfig(c); err != nil {
+			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "can not set config"})
 		}
 	})
@@ -255,21 +256,25 @@ func setupRouter() *gin.Engine {
 	// 用户
 	router.POST("/user/login", func(c *gin.Context) {
 		if err := userLogin(c); err != nil {
+			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "user login error"})
 		}
 	})
 	router.GET("/user", func(c *gin.Context) {
 		if err := sendUserInfo(c); err != nil {
+			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send userInfo error"})
 		}
 	})
 	router.GET("/user/logout", func(c *gin.Context) {
 		if err := userLogout(c); err != nil {
+			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "user logout error"})
 		}
 	})
 	router.POST("/user/mobile_login", func(c *gin.Context) {
 		if err := mobileUserLogin(c); err != nil {
+			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "mobile user login error"})
 		}
 	})
@@ -277,6 +282,7 @@ func setupRouter() *gin.Engine {
 	// 仪表盘
 	router.GET("/dashboard", func(c *gin.Context) {
 		if err := sendDashBoard(c); err != nil {
+			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send dashboard error"})
 		}
 	})
@@ -284,12 +290,28 @@ func setupRouter() *gin.Engine {
 	// 图片
 	router.GET("/images/:name", func(c *gin.Context) {
 		if err := sendImage(c); err != nil {
+			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send image error"})
 		}
 	})
 	router.POST("/images", func(c *gin.Context) {
 		if err := saveImage(c); err != nil {
+			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "save image error"})
+		}
+	})
+
+	//PDF
+	router.GET("/pdf/:name", func(c *gin.Context) {
+		if err := sendPDF(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send pdf error"})
+		}
+	})
+	router.POST("/pdf", func(c *gin.Context) {
+		if err := savePDF(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "save pdf error"})
 		}
 	})
 

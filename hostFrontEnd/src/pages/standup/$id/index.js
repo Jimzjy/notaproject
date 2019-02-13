@@ -1,9 +1,10 @@
 import React, { PureComponent } from "react";
 import PropTypes from 'prop-types'
 import { connect } from 'dva'
-import { Button, Progress, Switch, Spin, Row, Col, Popover, Collapse, Carousel, notification } from 'antd'
+import { Button, Progress, Switch, Spin, Row, Col, Popover, Collapse, Carousel, notification, Upload, Icon, message } from 'antd'
 import { Stage, Layer, Rect, Text } from 'react-konva';
 import Konva from 'konva';
+import { Document, Page as PDFPage } from 'react-pdf';
 import KImage from '../components/KImage'
 import QRcode from 'qrcode.react'
 import { Page } from 'components'
@@ -262,6 +263,21 @@ class StandupDetail extends PureComponent {
       )
     }
 
+    const uploadProps = {
+      name: 'file',
+      action: `${apiPrefix}/pdf`,
+      onChange({ file }) {
+        if (file.status === 'done') {
+          message.success(`${file.name} 上传成功`)
+          //TODO
+          const pdfFileName = file.response.message
+          console.log(pdfFileName)
+        } else if (file.status === 'error') {
+          message.error(`${file.name} 上传失败`)
+        }
+      },
+    };
+
     return (
       <Page inner>
         <Row>
@@ -277,6 +293,13 @@ class StandupDetail extends PureComponent {
                   </Popover>
                 </span>
               )}
+              <div>
+                <Upload {...uploadProps}>
+                  <Button style={{ marginTop: 16 }}>
+                    <Icon type="upload" /> 上传演示文稿
+                  </Button>
+                </Upload>
+              </div>
             </Collapse.Panel>
             <Collapse.Panel header="点名信息" key="2">
               <Button onClick={this.handleFaceCountStart}>点名</Button>

@@ -126,8 +126,6 @@ func sendPersonStatus(c *gin.Context) (err error) {
 		return
 	}
 
-	fmt.Println(faceDetectResults)
-
 	if len(faceDetectResults.Faces) <= basicSize {
 		c.JSON(http.StatusOK, faceDetectResults)
 	} else {

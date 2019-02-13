@@ -25,9 +25,10 @@ const (
 	ConfigFileName = "config.json"
 	UpdateStatsTime = 30
 	ImageFileDir = "images/"
+	PDFFileDir = "pdf/"
 	Domain = "localhost"
-	PitchAngle = 10
-	EyeClose = 10
+	PitchAngle = 30
+	EyeClose = 50
 )
 
 var config Config
@@ -1683,7 +1684,6 @@ func standUp(c *gin.Context) (err error) {
 			}
 
 			if standUpPacket.CurrentPDFPage > 0 {
-				// TODO("make sure it")
 				currentPDFPage = standUpPacket.CurrentPDFPage
 			}
 
@@ -1847,7 +1847,10 @@ func standUp(c *gin.Context) (err error) {
 				}
 				close(standUpChannels[readChannelIndex])
 				if writeChannelIndex > 0 {
-					close(standUpChannels[writeChannelIndex])
+					closePack := StandUpPacket{
+						SayGoodbye: true,
+					}
+					standUpChannels[writeChannelIndex] <- closePack
 				}
 
 				var finalStudentStatus, finalStudentWarningRecordList []byte
@@ -1912,8 +1915,6 @@ func standUp(c *gin.Context) (err error) {
 					log.Println("write to teacher web client", err)
 					return
 				}
-			} else {
-				return
 			}
 		}
 	}
@@ -2011,6 +2012,7 @@ func standUpMobile(c *gin.Context) (err error) {
 	for {
 		select {
 		case <-done:
+			close(standUpChannels[readIndex])
 			return
 		case standUpPacket, ok := <-standUpChannels[readIndex]:
 			if ok {
@@ -2025,8 +2027,6 @@ func standUpMobile(c *gin.Context) (err error) {
 					log.Println("write to teacher mobile client", err)
 					return
 				}
-			} else {
-				return
 			}
 		}
 	}
@@ -2062,10 +2062,23 @@ func getStudentsStatus(camStreamPath, devicePath string, faceRectNos []FaceRectT
 		}
 	}
 
-	//TODO("set not good status")
 	notGoodStatus := Attributes{
 		Emotion: Emotion{Neutral: 100},
-		HeadPose: HeadPose{},
+		HeadPose: HeadPose{
+			YawAngle: 0,
+			PitchAngle: 50,
+			RollAngle: 0,
+		},
+		EyesStatus: EyesStatus{
+			LeftEyeStatus: EyeStatus{
+				NoGlassEyeClose: 99,
+				NormalGlassEyeClose: 99,
+			},
+			RightEyeStatus: EyeStatus{
+				NoGlassEyeClose: 99,
+				NormalGlassEyeClose: 99,
+			},
+		},
 	}
 	var notDetectedStudents []StudentStatus
 	for _, v := range faceRectNos {
@@ -2343,7 +2356,27 @@ func sendImage(c *gin.Context) (err error) {
 	imageName := c.Param("name")
 
 	c.File(ImageFileDir + imageName)
+	return
+}
 
+func savePDF(c *gin.Context) (err error) {
+	file, _ := c.FormFile("file")
+
+	fileName := fmt.Sprintf("%v%v", time.Now().UnixNano(), path.Ext(file.Filename))
+
+	err = c.SaveUploadedFile(file, PDFFileDir + fileName)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, JsonMessage{Message: fileName})
+	return
+}
+
+func sendPDF(c *gin.Context) (err error) {
+	pdfName := c.Param("name")
+
+	c.File(PDFFileDir + pdfName)
 	return
 }
 

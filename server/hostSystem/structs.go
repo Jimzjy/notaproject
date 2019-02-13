@@ -107,6 +107,7 @@ type StandUpPacket struct {
 	RequestStartPacket bool
 	StudentWarningList string
 	StudentWarningRecordList []int
+	SayGoodbye bool
 }
 
 type StudentWarningRecord struct {

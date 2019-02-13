@@ -31,6 +31,12 @@ class _ClassPageState extends State<ClassesPage> {
   }
 
   @override
+  void didChangeDependencies() {
+    _requestClasses();
+    super.didChangeDependencies();
+  }
+
+  @override
   Widget build(BuildContext context) {
     Color primaryColor = Theme.of(context).primaryColor;
 
