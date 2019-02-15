@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:notapp/models/json_models.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:qrcode_reader/qrcode_reader.dart';
 import 'sub_navigation.dart';
 
 class ClassesPage extends StatefulWidget {
@@ -42,7 +43,7 @@ class _ClassPageState extends State<ClassesPage> {
 
     return new Scaffold(
       appBar: new FakeSearchBar(
-        left: new IconButton(icon: Icon(IconFontCN.scan, color: Colors.white,), onPressed: () {}),
+        left: new IconButton(icon: Icon(IconFontCN.scan, color: Colors.white,), onPressed: _onScanPressed),
         text: "搜索",
       ),
       body: new Container(
@@ -83,14 +84,9 @@ class _ClassPageState extends State<ClassesPage> {
                         ),
                       ),
                       onTap: () {
-                        Navigator.push(context, new MaterialPageRoute(
-                          builder: (context) {
-                            return new StandUpClassPage(
-                              wsParam: "/stand_up_mobile?class_id=${_standUpStatus.classID}&write_channel_index=${_standUpStatus.wReadMWriteIndex}",
-                              classResponse: currentClass,
-                            );
-                          },
-                        ));
+                        _navigateToStandUpPage(
+                            "/stand_up_mobile?class_id=${_standUpStatus.classID}&write_channel_index=${_standUpStatus.wReadMWriteIndex}",
+                            currentClass);
                       },
                     ),
                   );
@@ -118,6 +114,35 @@ class _ClassPageState extends State<ClassesPage> {
         )
       ),
     );
+  }
+  
+  _navigateToStandUpPage(String wsParam, ClassResponse currentClass) {
+    Navigator.push(context, new MaterialPageRoute(
+      builder: (context) {
+        return new StandUpClassPage(
+          wsParam: wsParam,
+          classResponse: currentClass,
+        );
+      },
+    ));
+  }
+
+  _onScanPressed() {
+    Future<String> futureString = new QRCodeReader().scan();
+    futureString.then((String value) {
+      var params = value.split("|");
+
+      ClassResponse currentClass;
+      for (var classResponse in _classesResponse.classes) {
+        if (classResponse.classID.toString() == params[0]) {
+          currentClass = classResponse;
+        }
+      }
+
+      _navigateToStandUpPage(
+          "/stand_up_mobile?class_id=${params[0]}&write_channel_index=${params[1]}",
+          currentClass);
+    });
   }
 
   int _getClassListSize() {

@@ -161,7 +161,7 @@ class StandupDetail extends PureComponent {
       })   
     }
     this.suws.onmessage = function(evt) {
-      const message = JSON.parse(evt.data)
+      const packet = JSON.parse(evt.data)
 
       if (!getStandUpStatus()) {
         notification.open({
@@ -169,12 +169,12 @@ class StandupDetail extends PureComponent {
           duration: 3,
         })
         const _standupData = getStandUpData()
-        _standupData.WReadMWriteIndex = message.WReadMWriteIndex
+        _standupData.WReadMWriteIndex = packet.WReadMWriteIndex
         handleSetState({standtupStatus: true, standupData: _standupData})
         handlePDFChange()
       }
 
-      handlePageToChange(message.ChangePDFPage)
+      handlePageToChange(packet.ChangePDFPage)
     }
     this.suws.onerror = function(evt) {
       console.log("error: " + evt.data)
@@ -341,7 +341,7 @@ class StandupDetail extends PureComponent {
               <Button type="ghost" onClick={this.handleStandUpStop} style={{ marginLeft: 16 }}>下课</Button>
               {standtupStatus && (
                 <span style={{ marginLeft: 16 }}>
-                  <Popover placement="right" content={<QRcode size={160} value={`/stand_up_mobile?class_id=${data.class_id}&write_channel_index=${standupData.WReadMWriteIndex}`}/>} >
+                  <Popover placement="right" content={<QRcode size={160} value={`${data.class_id}|${standupData.WReadMWriteIndex}`}/>} >
                     <Button type="primary">二维码</Button>
                   </Popover>
                 </span>
