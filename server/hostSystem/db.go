@@ -370,7 +370,7 @@ func getAllTeachers() (teachers []Teacher, err error) {
 	return
 }
 
-func getClassroomStatsItem(classroomID int) (stats *ClassroomStatsTable, err error) {
+func getClassroomStatsItem(classroomNo string) (stats *ClassroomStatsTable, err error) {
 	stats = &ClassroomStatsTable{}
 
 	db, err := gorm.Open(DB, DBName)
@@ -379,10 +379,21 @@ func getClassroomStatsItem(classroomID int) (stats *ClassroomStatsTable, err err
 	}
 	defer db.Close()
 
-	db.Last(stats, "classroom_id = ?", classroomID)
+	db.Last(stats, "classroom_no = ?", classroomNo)
 	if stats.ID == 0 {
-		err = fmt.Errorf("can not find classroom stats for classroom id %v", classroomID)
+		err = fmt.Errorf("can not find classroom stats for classroom no %v", classroomNo)
 	}
+	return
+}
+
+func getDeviceStats(deviceID int) (stats []DeviceStatsTable, err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Order("created_at desc").Limit(10).Find(&stats, "device_id = ?", deviceID)
 	return
 }
 

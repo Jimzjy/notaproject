@@ -24,6 +24,7 @@ export default {
   createDevice: 'POST /devices',
   removeDevices: 'DELETE /devices',
   updateDevice: 'PATCH /devices',
+  queryDeviceStats: '/device_stats',
 
   queryCameras: '/cameras',
   createCamera: 'POST /cameras',
@@ -34,4 +35,5 @@ export default {
   createClassroom: 'POST /classrooms',
   removeClassrooms: 'DELETE /classrooms',
   updateClassroom: 'PATCH /classrooms',
+  queryClassroomStats: '/classroom_stats',
 }

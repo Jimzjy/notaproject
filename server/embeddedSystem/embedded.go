@@ -493,6 +493,8 @@ func uploadStatsRequest() error {
 		classroomStats[i].Persons = data
 		classroomStats[i].PersonCount = len(data)
 		classroomStats[i].ClassroomNo = config.Classrooms[i].ClassroomNo
+		classroomStats[i].GlobalWidth = globalWidth
+		classroomStats[i].GlobalHeight = globalHeight
 	}
 
 	cpuUsed, err := cpu.Percent(time.Second, false)

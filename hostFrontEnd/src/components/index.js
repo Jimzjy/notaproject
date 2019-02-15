@@ -7,5 +7,17 @@ import * as MyLayout from './Layout/index.js'
 import Page from './Page'
 import PicturesWall from './PicturesWall/PicturesWall'
 import Selects from './Selects/Selects'
+import SystemStats from './SystemStats/systemStats'
 
-export { MyLayout, Editor, FilterItem, DropOption, Loader, Page, ScrollBar, PicturesWall, Selects }
+export {
+  MyLayout,
+  Editor,
+  FilterItem,
+  DropOption,
+  Loader,
+  Page,
+  ScrollBar,
+  PicturesWall,
+  Selects,
+  SystemStats,
+}

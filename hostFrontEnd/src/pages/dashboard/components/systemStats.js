@@ -2,7 +2,6 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import { Color } from 'utils'
 import CountUp from 'react-countup'
-import classnames from 'classnames'
 import {
   AreaChart,
   Area,

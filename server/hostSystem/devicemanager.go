@@ -411,7 +411,7 @@ func updateClassroomStats(c *gin.Context) (err error) {
 	}
 
 	err = createTableItem(&DeviceStatsTable{
-		UpdateTime: stats.UpdateTime,
+		UpdateTime: stats.UpdateTime.Unix(),
 		CpuUsed: stats.SystemStats.CpuUsed,
 		MemUsed: stats.SystemStats.MemUsed,
 		DeviceID: device.ID,
@@ -434,10 +434,12 @@ func updateClassroomStats(c *gin.Context) (err error) {
 		}
 
 		err = createTableItem(&ClassroomStatsTable{
-			UpdateTime: stats.UpdateTime,
+			UpdateTime: stats.UpdateTime.Unix(),
 			PersonCount: classroomStats.PersonCount,
 			Persons: string(persons),
 			ClassroomNo: *classroom.ClassroomNo,
+			GlobalWidth: classroomStats.GlobalWidth,
+			GlobalHeight: classroomStats.GlobalHeight,
 		})
 
 		if err != nil {
@@ -449,17 +451,12 @@ func updateClassroomStats(c *gin.Context) (err error) {
 }
 
 func sendClassroomStats(c *gin.Context) (err error) {
-	classroomID, isExist := c.GetQuery("classroom_id")
-	if isExist {
-		return fmt.Errorf("no classroom_name")
+	classroomNo, isExist := c.GetQuery("classroom_no")
+	if !isExist {
+		return fmt.Errorf("no classroom_no")
 	}
 
-	var id int
-	id, err = strconv.Atoi(classroomID)
-	if err != nil {
-		return
-	}
-	classroomStatsItem, err := getClassroomStatsItem(id)
+	classroomStatsItem, err := getClassroomStatsItem(classroomNo)
 	if err != nil {
 		return
 	}
@@ -475,11 +472,36 @@ func sendClassroomStats(c *gin.Context) (err error) {
 		ClassroomStats: ClassroomStats{
 			ClassroomNo: classroomStatsItem.ClassroomNo,
 			PersonCount: classroomStatsItem.PersonCount,
+			GlobalWidth: classroomStatsItem.GlobalWidth,
+			GlobalHeight: classroomStatsItem.GlobalHeight,
 			Persons: persons,
 		},
 	}
 
 	c.JSON(http.StatusOK, stats)
+	return
+}
+
+func sendDeviceStats(c *gin.Context) (err error) {
+	deviceID, isExist := c.GetQuery("device_id")
+	if !isExist {
+		return fmt.Errorf("no device_id")
+	}
+
+	id, err := strconv.Atoi(deviceID)
+	if err != nil {
+		return
+	}
+
+	deviceStatsItem, err := getDeviceStats(id)
+	if err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, DeviceStats{
+		UpdateTime: deviceStatsItem[0].UpdateTime,
+		DeviceStats: deviceStatsItem,
+	})
 	return
 }
 
@@ -1609,6 +1631,8 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 func standUp(c *gin.Context) (err error) {
 	classID := c.Query("class_id")
 	teacherNo := c.Query("teacher_no")
+	pdfUrl := c.Query("pdf_url")
+	pdfNumPages := c.Query("pdf_num_pages")
 
 	if teacherNo == "" {
 		err = fmt.Errorf("no teacher_no")
@@ -1616,6 +1640,16 @@ func standUp(c *gin.Context) (err error) {
 	}
 
 	id, err := strconv.Atoi(classID)
+	if err != nil {
+		return
+	}
+
+	if pdfUrl == "" || pdfNumPages == "" {
+		err = fmt.Errorf("no pdf params")
+		return
+	}
+
+	_pdfPages, err := strconv.Atoi(pdfNumPages)
 	if err != nil {
 		return
 	}
@@ -1645,7 +1679,6 @@ func standUp(c *gin.Context) (err error) {
 	var faceRectNos []FaceRectToken
 	var faceCountFinish = false
 	var faceCountRecordID = 0
-	var pdfUrl = ""
 	done := make(chan string)
 	go func() {
 		defer close(done)
@@ -1711,8 +1744,6 @@ func standUp(c *gin.Context) (err error) {
 		studentWarningRecordList[i].StudentNo = *students[i].StudentNo
 	}
 
-	// TODO("set pdf")
-	_pdfPages := 4
 	studentsStatusWithPage := make([]StudentStatusWithPage, _pdfPages)
 	for i := 0; i < _pdfPages; i++ {
 		studentsStatusWithPage[i].PDFPage = i + 1
@@ -1792,7 +1823,7 @@ func standUp(c *gin.Context) (err error) {
 						for i := 0; i < len(studentWarningRecordList); i++ {
 							if studentWarningRecordList[i].StudentNo == v.StudentNo {
 								if studentWarningRecordList[i].LastWarning {
-									studentWarningList += v.StudentNo + ", "
+									studentWarningList += v.StudentNo + "(闭眼), "
 									studentWarningRecordList[i].LastWarning = false
 									studentWarningRecordList[i].Warning += 1
 								} else {

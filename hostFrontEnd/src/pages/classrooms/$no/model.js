@@ -2,7 +2,8 @@ import { pathMatchRegexp } from 'utils'
 import api from 'api'
 
 const { 
-  queryClassrooms
+  queryClassrooms,
+  queryClassroomStats
 } = api
 
 export default {
@@ -10,6 +11,7 @@ export default {
 
   state: {
     data: {},
+    stats: {},
   },
 
   subscriptions: {
@@ -26,12 +28,17 @@ export default {
   effects: {
     *query({ payload }, { call, put }) {
       const data = yield call(queryClassrooms, payload)
-      const { success, classrooms } = data
-      if (success && classrooms.length > 0) {
+      const stats = yield call(queryClassroomStats, payload)
+      const { classrooms } = data
+      const success1 = data.success
+      const success2 = stats.success
+
+      if (success1 && success2 && classrooms.length > 0) {
         yield put({
           type: 'querySuccess',
           payload: {
             data: classrooms[0],
+            stats: stats,
           },
         })
       } else {
@@ -42,10 +49,11 @@ export default {
 
   reducers: {
     querySuccess(state, { payload }) {
-      const { data } = payload
+      const { data, stats } = payload
       return {
         ...state,
         data,
+        stats,
       }
     },
   },

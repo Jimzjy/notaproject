@@ -106,6 +106,8 @@ type Classroom struct {
 type ClassroomStat struct {
 	ClassroomNo string `json:"classroom_no"`
 	PersonCount int `json:"person_count"`
+	GlobalWidth float64 `json:"global_width"`
+	GlobalHeight float64 `json:"global_height"`
 	Persons []FaceRectangle `json:"persons"`
 }
 

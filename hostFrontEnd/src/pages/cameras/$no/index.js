@@ -3,6 +3,7 @@ import PropTypes from 'prop-types'
 import { connect } from 'dva'
 import { Page } from 'components'
 import styles from './index.less'
+import { Row, Collapse } from 'antd'
 
 @connect(({ cameraDetail }) => ({ cameraDetail }))
 class CameraDetail extends PureComponent {
@@ -22,7 +23,13 @@ class CameraDetail extends PureComponent {
     }
     return (
       <Page inner>
-        <div className={styles.content}>{content}</div>
+        <Row>
+          <Collapse defaultActiveKey={['1']} >
+            <Collapse.Panel header="摄像头信息" key="1">
+              <div className={styles.content}>{content}</div>
+            </Collapse.Panel>
+          </Collapse>
+        </Row>
       </Page>
     )
   }

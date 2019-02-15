@@ -8,10 +8,26 @@ import qs from 'qs'
 const { CancelToken } = axios
 window.cancelRequest = new Map()
 
+// https://segmentfault.com/a/1190000006160703
+export function timetrans(date) {
+  var date = new Date(date * 1000)
+  var Y = date.getFullYear() + '-'
+  var M =
+    (date.getMonth() + 1 < 10
+      ? '0' + (date.getMonth() + 1)
+      : date.getMonth() + 1) + '-'
+  var D = (date.getDate() < 10 ? '0' + date.getDate() : date.getDate()) + ' '
+  var h = (date.getHours() < 10 ? '0' + date.getHours() : date.getHours()) + ':'
+  var m =
+    (date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes()) + ':'
+  var s = date.getSeconds() < 10 ? '0' + date.getSeconds() : date.getSeconds()
+  return Y + M + D + h + m + s
+}
+
 export function objectToFormData(object) {
   let formData = new FormData()
-  
-  for ( let key in object ) {
+
+  for (let key in object) {
     let _object = object[key]
     if (_object instanceof Array) {
       for (let _key in _object) {

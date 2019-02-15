@@ -29,11 +29,14 @@ class StandupDetail extends PureComponent {
       studentNos: [],
       global_height: 0,
       global_width: 0,
-    }
+    },
+    numPages: null,
+    pageNumber: 1,
+    pdfFile: null,
   }
 
   suws = null
-  carousel = React.createRef()
+  // carousel = React.createRef()
   faceCountLayoutWidth = 0
 
   getFaceCountLayoutWidth = (e) => {
@@ -133,14 +136,21 @@ class StandupDetail extends PureComponent {
       return
     }
 
+    const { numPages, pdfFile } = this.state
+    if (numPages == null || pdfFile == null) {
+      message.error('没有演示文稿')
+      return
+    }
+
     const { standupDetail, app } = this.props
     const { data } = standupDetail
     const getStandUpStatus = this.getStandUpStatus
     const getStandUpData = this.getStandUpData
     const handleSetState = this.handleSetState
     const handlePageToChange = this.handlePageToChange
-
-    this.suws = new WebSocket(`ws://localhost:8000/stand_up?class_id=${data.class_id}&teacher_no=${app.user.username}`)
+    const handlePDFChange = this.handlePDFChange
+    
+    this.suws = new WebSocket(`ws://localhost:8000/stand_up?class_id=${data.class_id}&teacher_no=${app.user.username}&pdf_url=${pdfFile}&pdf_num_pages=${numPages}`)
     this.suws.onopen = function(evt) {
       console.log("open suws")
     }
@@ -161,6 +171,7 @@ class StandupDetail extends PureComponent {
         const _standupData = getStandUpData()
         _standupData.WReadMWriteIndex = message.WReadMWriteIndex
         handleSetState({standtupStatus: true, standupData: _standupData})
+        handlePDFChange()
       }
 
       handlePageToChange(message.ChangePDFPage)
@@ -177,9 +188,9 @@ class StandupDetail extends PureComponent {
 
   handlePageToChange = (page) => {
     if (page > 0) {
-      this.carousel.next()
+      this.handlePageChange(1)
     } else if (page < 0) {
-      this.carousel.prev()
+      this.handlePageChange(-1)
     }
   }
 
@@ -199,12 +210,31 @@ class StandupDetail extends PureComponent {
     this.suws = null
   }
 
-  handlePageChange = (current) => {
-    if (this.suws == null) {
+  handlePageChange = (stepDir) => {
+    const numPages = this.state.numPages
+    if (numPages <= 0) {
       return
     }
 
-    this.suws.send(JSON.stringify({ CurrentPDFPage: current+1 }))
+    let currentPage = this.state.pageNumber
+    if (stepDir > 0) {
+      if (currentPage + 1 <= numPages) {
+        currentPage += 1
+      } else {
+        currentPage = 1
+      }
+    } else {
+      if (currentPage - 1 >= 1) {
+        currentPage -= 1
+      } else {
+        currentPage = numPages
+      }
+    }
+    this.setState({ pageNumber: currentPage })
+
+    if (this.suws != null) {
+      this.suws.send(JSON.stringify({ CurrentPDFPage: currentPage }))
+    }
   }
 
   getStandUpStatus = () => {
@@ -215,10 +245,28 @@ class StandupDetail extends PureComponent {
     return this.state.standupData
   }
 
+  onDocumentLoadSuccess = ({ numPages }) => {
+    this.setState({ numPages })
+    // this.handlePDFChange()
+  }
+
+  handlePDFChange = () => {
+    if (this.suws == null) {
+      return
+    }
+
+    let packet = { CurrentPDFPage: this.state.pageNumber }
+    if (this.state.numPages > 0) {
+      packet.NumPDFPages = this.state.numPages
+      packet.PDFUrl = this.state.pdfFile
+    }
+    this.suws.send(JSON.stringify(packet))
+  }
+
   render() {
     const { standupDetail } = this.props
     const { data } = standupDetail
-    const { faceCountData, showFaceCount, showFaceCountBackground, currentPerson, showSpinning, standtupStatus, standupData } = this.state
+    const { faceCountData, showFaceCount, showFaceCountBackground, currentPerson, showSpinning, standtupStatus, standupData, pageNumber, numPages, pdfFile } = this.state
     const content = []
     for (let key in data) {
       if ({}.hasOwnProperty.call(data, key)) {
@@ -232,7 +280,7 @@ class StandupDetail extends PureComponent {
     }
 
     const faceImage = `${apiPrefix}/images/${faceCountData.backgroundImage}`
-    const imageScale = this.faceCountLayoutWidth * 0.5 / faceCountData.global_width
+    const imageScale = this.faceCountLayoutWidth / faceCountData.global_width
     const imageHeight = faceCountData.global_height * imageScale
     const imageWidth = faceCountData.global_width * imageScale
 
@@ -263,15 +311,20 @@ class StandupDetail extends PureComponent {
       )
     }
 
+    const setPDFFile = (pdfFile) => {
+      this.setState({
+        pdfFile: pdfFile,
+        pageNumber: 1
+      })
+    }
+
     const uploadProps = {
       name: 'file',
       action: `${apiPrefix}/pdf`,
       onChange({ file }) {
         if (file.status === 'done') {
           message.success(`${file.name} 上传成功`)
-          //TODO
-          const pdfFileName = file.response.message
-          console.log(pdfFileName)
+          setPDFFile(`${apiPrefix}/pdf/${file.response.message}`)
         } else if (file.status === 'error') {
           message.error(`${file.name} 上传失败`)
         }
@@ -325,14 +378,30 @@ class StandupDetail extends PureComponent {
             </Collapse.Panel>
           </Collapse>
         </Row>
-        <Row style={{ marginTop: 24 }} >
+        {/* <Row style={{ marginTop: 24 }} >
           <Carousel className={styles.carousel} afterChange={this.handlePageChange} ref={(ref) => {this.carousel = ref}}>
             <div><h3>1</h3></div>
             <div><h3>2</h3></div>
             <div><h3>3</h3></div>
             <div><h3>4</h3></div>
           </Carousel>
-        </Row>
+        </Row> */}
+        { pdfFile != null && (
+          <Row style={{ marginTop: 24 }} type="flex" justify="center">
+            <Col>
+              <Document
+                file={pdfFile}
+                onLoadSuccess={this.onDocumentLoadSuccess}
+              >
+                <PDFPage pageNumber={pageNumber}/>
+              </Document>
+              <p style={{ marginTop: 16 }}>
+                Page {pageNumber} of {numPages}
+                <Button shape="circle" icon="left" style={{ marginLeft: 24 }} onClick={ () => { this.handlePageChange(-1) } }/>
+                <Button shape="circle" icon="right" style={{ marginLeft: 16 }} onClick={ () => { this.handlePageChange(1) } }/>
+              </p>
+            </Col>
+        </Row>)}
       </Page>
     )
   }

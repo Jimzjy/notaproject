@@ -108,7 +108,7 @@ func setupRouter() *gin.Engine {
 	router.GET("/classroom_stats", func(c *gin.Context) {
 		if err := sendClassroomStats(c); err != nil {
 			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send stats error"})
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send classroom stats error"})
 		}
 	})
 
@@ -135,6 +135,12 @@ func setupRouter() *gin.Engine {
 		if err := deleteDevices(c); err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "delete device error"})
+		}
+	})
+	router.GET("/device_stats", func(c *gin.Context) {
+		if err := sendDeviceStats(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send device stats error"})
 		}
 	})
 

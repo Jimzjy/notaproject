@@ -305,6 +305,8 @@ type Classroom struct {
 type ClassroomStats struct {
 	ClassroomNo string `json:"classroom_no"`
 	PersonCount int `json:"person_count"`
+	GlobalWidth float64 `json:"global_width"`
+	GlobalHeight float64 `json:"global_height"`
 	Persons []FaceRectangle `json:"persons"`
 }
 
@@ -321,18 +323,20 @@ type Stats struct {
 
 type DeviceStatsTable struct {
 	gorm.Model
-	UpdateTime time.Time
-	CpuUsed float64
-	MemUsed float64
-	DeviceID uint
+	UpdateTime int64 `json:"update_time"`
+	CpuUsed float64 `json:"cpu_used"`
+	MemUsed float64 `json:"mem_used"`
+	DeviceID uint `json:"device_id"`
 }
 
 type ClassroomStatsTable struct {
 	gorm.Model
-	UpdateTime time.Time
+	UpdateTime int64
 	PersonCount int
 	Persons string
 	ClassroomNo string
+	GlobalWidth float64
+	GlobalHeight float64
 }
 
 type DeviceManagerSystemStats struct {
@@ -342,8 +346,13 @@ type DeviceManagerSystemStats struct {
 }
 
 type SingleClassroomStats struct {
-	UpdateTime time.Time `json:"update_time"`
+	UpdateTime int64 `json:"update_time"`
 	ClassroomStats ClassroomStats `json:"classroom_stats"`
+}
+
+type DeviceStats struct {
+	UpdateTime int64 `json:"update_time"`
+	DeviceStats []DeviceStatsTable `json:"device_stats"`
 }
 
 type UserInfo struct {
