@@ -42,9 +42,7 @@ class Teachers extends PureComponent {
       visible: modalVisible,
       maskClosable: false,
       confirmLoading: loading.effects[`teachers/${modalType}`],
-      title: `${
-        modalType === 'create' ? `创建教师信息` : `更新教师信息`
-      }`,
+      title: `${modalType === 'create' ? `创建教师信息` : `更新教师信息`}`,
       centered: true,
       onOk(data) {
         dispatch({
@@ -71,7 +69,7 @@ class Teachers extends PureComponent {
           pageSize: page.pageSize,
         })
       },
-      onDeleteItem(no) {        
+      onDeleteItem(no) {
         dispatch({
           type: 'teachers/delete',
           payload: no,

@@ -42,9 +42,7 @@ class Students extends PureComponent {
       visible: modalVisible,
       maskClosable: false,
       confirmLoading: loading.effects[`studnets/${modalType}`],
-      title: `${
-        modalType === 'create' ? `创建学生信息` : `更新学生信息`
-      }`,
+      title: `${modalType === 'create' ? `创建学生信息` : `更新学生信息`}`,
       centered: true,
       onOk(data) {
         dispatch({

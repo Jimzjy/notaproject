@@ -42,9 +42,7 @@ class Devices extends PureComponent {
       visible: modalVisible,
       maskClosable: false,
       confirmLoading: loading.effects[`devices/${modalType}`],
-      title: `${
-        modalType === 'create' ? `创建设备信息` : `更新设备信息`
-      }`,
+      title: `${modalType === 'create' ? `创建设备信息` : `更新设备信息`}`,
       centered: true,
       onOk(data) {
         dispatch({

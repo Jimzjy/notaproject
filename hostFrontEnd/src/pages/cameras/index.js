@@ -42,9 +42,7 @@ class Cameras extends PureComponent {
       visible: modalVisible,
       maskClosable: false,
       confirmLoading: loading.effects[`cameras/${modalType}`],
-      title: `${
-        modalType === 'create' ? `创建摄像头信息` : `更新摄像头信息`
-      }`,
+      title: `${modalType === 'create' ? `创建摄像头信息` : `更新摄像头信息`}`,
       centered: true,
       onOk(data) {
         dispatch({
