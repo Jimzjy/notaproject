@@ -369,8 +369,14 @@ class StudentStatusListResponse {
 
 @JsonSerializable()
 class StudentResponse {
-  StudentResponse({this.studentNo, this.studentName, this.faceToken,
-      this.studentImage, this.studentPassword, this.classIDs});
+  StudentResponse({
+    this.studentNo = "0",
+    this.studentName = "0",
+    this.faceToken = "",
+    this.studentImage = "",
+    this.studentPassword = "",
+    this.classIDs
+  });
 
   @JsonKey(name: "student_no")
   String studentNo;

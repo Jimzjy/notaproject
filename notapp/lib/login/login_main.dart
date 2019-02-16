@@ -166,7 +166,7 @@ class _LoginPageState extends State<LoginPage> {
       if (response?.statusCode == 200) {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('userType', _userType);
-        await prefs.setString('teacherNo', _usernameController.text);
+        await prefs.setString('userNo', _usernameController.text);
 
         Navigator.pushReplacement(context, new MaterialPageRoute(
           builder: (context) {

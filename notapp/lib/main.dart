@@ -8,7 +8,7 @@ const NOT_LOGIN = "notlogin";
 const TEACHER_USER = "teacher";
 const NORMAL_USER = "normal";
 const TEACHER_APP_COLOR = Colors.blue;
-const NORMAL_APP_COLOR = Colors.indigo;
+const NORMAL_APP_COLOR = Colors.green;
 
 void main() {
   getUserType().then((v) {

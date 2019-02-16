@@ -379,6 +379,6 @@ class _MinePageState extends State {
 
 Future<String> getTeacherNo() async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
-  String userType = prefs.getString('teacherNo') ?? "";
-  return userType;
+  String userNo = prefs.getString('userNo') ?? "";
+  return userNo;
 }

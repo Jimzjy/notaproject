@@ -8,6 +8,9 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:web_socket_channel/io.dart';
 import 'dart:convert';
 import 'package:flushbar/flushbar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:notapp/main.dart' show NOT_LOGIN;
+import 'package:notapp/login/login_main.dart';
 import 'dart:math';
 
 const PITCH_ANGLE = 30;
@@ -266,8 +269,30 @@ class SettingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
-      body: new Text("setting"),
+      appBar: new AppBar(
+        title: new Text("设置"),
+        elevation: 0.0,
+      ),
+      body: new Container(
+        color: Theme.of(context).primaryColor,
+        child: new Center(
+          child: new MaterialButton(
+            color: Colors.white,
+            onPressed: () => _onLogoutButtonPressed(context),
+            child: new Text("退出登录"),
+          ),
+        ),
+      ),
     );
+  }
+
+  _onLogoutButtonPressed(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userType', NOT_LOGIN);
+
+    Navigator.pushReplacement(context, new MaterialPageRoute(builder: (context) {
+      return new LoginApp();
+    }));
   }
 }
 
@@ -320,7 +345,7 @@ class _NormalClassPageState extends State<NormalClassPage> {
         });
 
         studentStatusResponse.studentStatus.forEach((StudentStatusWithPage _studentStatusWithPage) {
-          int _page = _studentStatusWithPage.pdfPage;
+          int _page = _studentStatusWithPage.pdfPage - 1;
 
           _studentStatusWithPage.studentStatus?.forEach((StudentStatus _studentStatus) {
             int _index = studentNoSort.indexOf(_studentStatus.studentNo);
@@ -598,6 +623,9 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
       setState(() {});
     });
 
+    if (studentStatusSeparateByTime.studentStatusAttributes.length <= currentStatusCount) {
+      return;
+    }
     studentHeadCube.add(Container(
       height: cubeSize,
       width: cubeSize,
@@ -685,6 +713,10 @@ class _StudentStatusPageState extends State<StudentStatusPage> with SingleTicker
   }
 
   Widget _buildStudentStatusCard() {
+    if (studentStatusSeparateByTime.studentStatusAttributes.length <= currentStatusCount) {
+      return new Container();
+    }
+
     var _date = DateTime.fromMillisecondsSinceEpoch(studentStatusSeparateByTime.studentStatusAttributes[currentStatusCount].updateTime * 1000);
     var angle = first ? cubeAngle : cubeAngle * animation.value;
     var cosAR = cubeRadius * cos(angle);
