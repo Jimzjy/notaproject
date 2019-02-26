@@ -22,11 +22,12 @@ import (
 )
 
 const (
-	ConfigFileName = "config.json"
+	RootAddress = "/home/pi/hostSystem/"
+	ConfigFileName = RootAddress + "config.json"
 	UpdateStatsTime = 30
-	ImageFileDir = "images/"
-	PDFFileDir = "pdf/"
-	Domain = "localhost"
+	ImageFileDir = RootAddress + "images/"
+	PDFFileDir = RootAddress + "pdf/"
+	Domain = "192.168.*"
 	PitchAngle = 30
 	EyeClose = 50
 )
@@ -48,7 +49,7 @@ var longTimeoutClient = &http.Client{
 func getConfig(config *Config) error {
 	var err error
 
-	data, err := ioutil.ReadFile("config.json")
+	data, err := ioutil.ReadFile(ConfigFileName)
 	if err != nil {
 		return err
 	}
@@ -689,7 +690,7 @@ func createStudent(c *gin.Context) (err error) {
 	studentName := c.PostForm("student_name")
 	studentPassword := c.PostForm("student_password")
 
-	data, err := ioutil.ReadFile(fmt.Sprintf("images/%v", studentImage))
+	data, err := ioutil.ReadFile(fmt.Sprintf(ImageFileDir + "%v", studentImage))
 	if err != nil {
 		return
 	}

@@ -75,7 +75,7 @@ class FaceCountTab extends StatelessWidget {
     if (faceCountRecordResponse != null) {
       List<PieChartData> data = [
         new PieChartData(0, faceCountRecordResponse.studentInClassCount),
-        new PieChartData(1, faceCountRecordResponse.studentNotInClass.length),
+        new PieChartData(1, faceCountRecordResponse.studentNotInClass?.length ?? 0),
       ];
 
       List<charts.Series> seriesList = [
@@ -88,7 +88,7 @@ class FaceCountTab extends StatelessWidget {
       ];
 
       List<StudentFaceCountResultCard> studentNotIn = [];
-      for (var sni in faceCountRecordResponse.studentNotInClass) {
+      for (var sni in faceCountRecordResponse?.studentNotInClass ?? []) {
         for (var s in students) {
           if (sni == s.studentNo) {
             studentNotIn.add(new StudentFaceCountResultCard(s.studentName, s.studentImage));

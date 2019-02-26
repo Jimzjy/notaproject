@@ -105,7 +105,7 @@ class ClassCard extends StatelessWidget {
         child: new Row(
           children: <Widget>[
             new Expanded(child: new ClipRRect(
-              child: new Image.network("http://$SERVER_ADDRESS/images/$classImage"),
+              child: new Image.network("http://$SERVER_ADDRESS/images/${classImage ?? ""}"),
               borderRadius: BorderRadius.circular(12.0),
             ), flex: 1,),
             new Expanded(
@@ -120,12 +120,12 @@ class ClassCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    new Text(className, style: new TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),),
+                    new Text(className ?? "", style: new TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),),
                     new Padding(padding: const EdgeInsets.only(top: 4.0),
-                      child: new Text("教室: $classroomNo", style: new TextStyle(fontSize: 12.0),),
+                      child: new Text("教室: ${classroomNo ?? ""}", style: new TextStyle(fontSize: 12.0),),
                     ),
                     new Padding(padding: const EdgeInsets.only(top: 4.0),
-                      child: new Text("ID: $classID", style: new TextStyle(fontSize: 12.0),),
+                      child: new Text("ID: ${classID ?? ""}", style: new TextStyle(fontSize: 12.0),),
                     ),
                   ],
                 ),

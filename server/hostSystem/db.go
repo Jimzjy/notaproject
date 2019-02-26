@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DBName  = "deviceManager.db"
+	DBName = RootAddress + "deviceManager.db"
 	DB = "sqlite3"
 )
 

@@ -10,6 +10,7 @@ import (
 func main() {
 	var err error
 
+	gin.SetMode(gin.ReleaseMode)
 	err = getConfig(&config)
 	if err != nil {
 		log.Println(err)

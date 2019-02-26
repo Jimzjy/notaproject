@@ -29,8 +29,8 @@ import "C"
 const (
 	FaceDetect = 0
 	BodyDetect = 1
-
-	ConfigFileName = "config.json"
+	RootAddress = "/home/pi/embeddedSystem/"
+	ConfigFileName = RootAddress + "config.json"
 )
 
 var (
@@ -51,6 +51,8 @@ var client = &http.Client{
 
 func main() {
 	var err error
+
+	gin.SetMode(gin.ReleaseMode)
 
 	err = getConfig(&config)
 	if err != nil {

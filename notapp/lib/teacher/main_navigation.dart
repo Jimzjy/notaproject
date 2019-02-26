@@ -80,7 +80,7 @@ class _ClassPageState extends State<ClassesPage> {
                         ),
                         child: new Padding(
                           padding: const EdgeInsets.all(16.0),
-                          child: new Text("正在上课:  ${currentClass.className}...", style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),),
+                          child: new Text("正在上课:  ${currentClass?.className ?? ""}...", style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold),),
                         ),
                       ),
                       onTap: () {

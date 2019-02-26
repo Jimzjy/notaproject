@@ -1,4 +1,4 @@
-import { Upload, Icon, Modal } from 'antd';
+import { Upload, Icon, Modal } from 'antd'
 import React, { PureComponent } from 'react'
 import PropTypes from 'prop-types'
 import { apiPrefix } from 'utils/config'
@@ -8,47 +8,53 @@ class PicturesWall extends PureComponent {
     previewVisible: false,
     previewImage: '',
     fileList: [],
-  };
+  }
 
   componentDidMount() {
-    let list = this.props.image === undefined ? [] : [{
-      uid: '-1',
-      name: 'xxx.png',
-      status: 'done',
-      url: `${apiPrefix}/images/${this.props.image}`,
-    }]
-    
+    let list =
+      this.props.image === undefined
+        ? []
+        : [
+            {
+              uid: '-1',
+              name: 'xxx.png',
+              status: 'done',
+              url: `${apiPrefix}/images/${this.props.image}`,
+            },
+          ]
+
     this.setState({
-      fileList: list
+      fileList: list,
     })
   }
 
   handleCancel = () => this.setState({ previewVisible: false })
 
-  handlePreview = (file) => {
+  handlePreview = file => {
     this.setState({
       previewImage: file.url,
       previewVisible: true,
-    });
+    })
   }
 
   handleChange = ({ fileList, file }) => {
-    if (file.status === "done") {
-      let imageName = fileList.length > 0 ? fileList[0].response : {message: ''}
+    if (file.status === 'done') {
+      let imageName =
+        fileList.length > 0 ? fileList[0].response : { message: '' }
       this.props.onChange(imageName.message)
     }
-    
+
     this.setState({ fileList })
   }
 
   render() {
-    const { previewVisible, previewImage, fileList } = this.state;
+    const { previewVisible, previewImage, fileList } = this.state
     const uploadButton = (
       <div>
         <Icon type="plus" />
         <div className="ant-upload-text">上传</div>
       </div>
-    );
+    )
     return (
       <div className="clearfix">
         <Upload
@@ -60,16 +66,20 @@ class PicturesWall extends PureComponent {
         >
           {fileList.length >= 1 ? null : uploadButton}
         </Upload>
-        <Modal visible={previewVisible} footer={null} onCancel={this.handleCancel}>
+        <Modal
+          visible={previewVisible}
+          footer={null}
+          onCancel={this.handleCancel}
+        >
           <img style={{ width: '100%' }} src={previewImage} />
         </Modal>
       </div>
-    );
+    )
   }
 }
 
 PicturesWall.propTypes = {
-  image: PropTypes.string
+  image: PropTypes.string,
 }
 
 export default PicturesWall
