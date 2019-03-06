@@ -266,6 +266,8 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
 }
 
 class SettingPage extends StatelessWidget {
+  Dio dio = DioManager.instance;
+
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
@@ -274,14 +276,27 @@ class SettingPage extends StatelessWidget {
         elevation: 0.0,
       ),
       body: new Container(
-        color: Theme.of(context).primaryColor,
-        child: new Center(
-          child: new MaterialButton(
-            color: Colors.white,
-            onPressed: () => _onLogoutButtonPressed(context),
-            child: new Text("退出登录"),
-          ),
+        decoration: BoxDecoration(
+          color: Theme.of(context).primaryColor
         ),
+        child: new Center(
+          child: new Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              new MaterialButton(
+                color: Colors.white,
+                onPressed: () => _clearError(),
+                child: new Text("清除错误"),
+              ),
+              new MaterialButton(
+                color: Colors.white,
+                onPressed: () => _onLogoutButtonPressed(context),
+                child: new Text("退出登录"),
+              ),
+            ],
+          ),
+        )
       ),
     );
   }
@@ -293,6 +308,16 @@ class SettingPage extends StatelessWidget {
     Navigator.pushReplacement(context, new MaterialPageRoute(builder: (context) {
       return new LoginApp();
     }));
+  }
+
+  _clearError() async {
+    Response response;
+
+    try {
+      response = await dio.get("/clear");
+    } catch (err) {
+      print(err);
+    }
   }
 }
 

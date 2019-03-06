@@ -2630,3 +2630,12 @@ func studentWarningToIntList(record []StudentWarningRecord) (list []int) {
 
 	return
 }
+
+func clearDBError(c *gin.Context) (err error) {
+	err = clearStandUpStatusTable()
+	if err != nil {
+		return
+	}
+
+	return
+}

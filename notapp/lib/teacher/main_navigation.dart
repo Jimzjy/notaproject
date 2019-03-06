@@ -96,7 +96,7 @@ class _ClassPageState extends State<ClassesPage> {
                     classID: _classesResponse.classes[index-1].classID,
                     classImage: _classesResponse.classes[index-1].classImage,
                     classroomNo: _classesResponse.classes[index-1].classroomNo,
-                    itemPressesCallback: () { _navigateToRecordPage(context, index); },
+                    itemPressesCallback: () { _navigateToRecordPage(context, index - 1); },
                   );
                 }
               } else {

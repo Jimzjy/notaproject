@@ -17,7 +17,7 @@ func main() {
 		return
 	}
 
-	go updateStats()
+	//go updateStats()
 
 	router := setupRouter()
 	err = router.Run(config.LocalPort)
@@ -319,6 +319,13 @@ func setupRouter() *gin.Engine {
 		if err := savePDF(c); err != nil {
 			log.Println(err)
 			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "save pdf error"})
+		}
+	})
+
+	router.GET("/clear", func(c *gin.Context) {
+		if err := clearDBError(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "clear"})
 		}
 	})
 

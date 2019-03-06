@@ -73,7 +73,7 @@ func main() {
 	C.free(unsafe.Pointer(paramBody))
 	C.free(unsafe.Pointer(modelBody))
 
-	go uploadStats()
+	//go uploadStats()
 
 	router := setupRouter()
 	err = router.Run(config.LocalPort)

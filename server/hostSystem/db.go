@@ -566,6 +566,17 @@ func getStudentStatusRecordByTeacher(teacherNo string) (studentStatus []StudentS
 	return
 }
 
+func clearStandUpStatusTable() (err error) {
+	db, err := gorm.Open(DB, DBName)
+	if err != nil {
+		return
+	}
+	defer db.Close()
+
+	db.Unscoped().Delete(&StandUpStatusTable{}, "id >= 1")
+	return
+}
+
 func getTableCount(tableName string) (count int, err error) {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {
