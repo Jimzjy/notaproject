@@ -100,7 +100,7 @@ class StandupDetail extends PureComponent {
       }
     })
 
-    let ws = new WebSocket("ws://192.168.7.119:8000/face_count?class_id=" + data.class_id)
+    let ws = new WebSocket("ws://192.168.7.105:8000/face_count?class_id=" + data.class_id)
     ws.onopen = function(evt) {
       console.log("open ws")
     }
@@ -150,7 +150,7 @@ class StandupDetail extends PureComponent {
     const handlePageToChange = this.handlePageToChange
     const handlePDFChange = this.handlePDFChange
     
-    this.suws = new WebSocket(`ws://192.168.7.119:8000/stand_up?class_id=${data.class_id}&teacher_no=${app.user.username}&pdf_url=${pdfFile}&pdf_num_pages=${numPages}`)
+    this.suws = new WebSocket(`ws://192.168.7.105:8000/stand_up?class_id=${data.class_id}&teacher_no=${app.user.username}&pdf_url=${pdfFile}&pdf_num_pages=${numPages}`)
     this.suws.onopen = function(evt) {
       console.log("open suws")
     }

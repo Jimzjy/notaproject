@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'json_models.dart';
 
-const SERVER_ADDRESS = "192.168.7.119:8000";
+const SERVER_ADDRESS = "192.168.7.105:8000";
 
 class DioManager {
   static Dio get instance => _getInstance();

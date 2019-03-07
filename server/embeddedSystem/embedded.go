@@ -270,24 +270,25 @@ func getSearchData(camStreamPath, faceSetToken string, chPersonData chan PersonD
 	}
 
 	chPostCtrl := make(chan string, config.Qps)
+	chActionFinished := make(chan byte)
 	count := 0
 	for _, v := range faceDetectResults.Faces {
 		_personData := personData
 
-		go sendFacePostForm(faceSetToken, v, _personData, chPersonData, chPostCtrl, &count)
+		go sendFacePostForm(faceSetToken, v, _personData, chPersonData, chPostCtrl, &count, chActionFinished, personCount)
 	}
 
-	for {
-		if count >= personCount {
-			return
-		}
-	}
+	<- chActionFinished
 }
 
-func sendFacePostForm(faceSetToken string, face FaceAnalyzeResult, _personData PersonData, chPersonData chan PersonData, chPostCtrl chan string, count *int) {
+func sendFacePostForm(faceSetToken string, face FaceAnalyzeResult, _personData PersonData, chPersonData chan PersonData, chPostCtrl chan string, count *int, chActionFinished chan byte, personCount int) {
 	chPostCtrl <- ""
 	defer func() {
-		*count += 1
+		if *count < personCount - 1 {
+			*count += 1
+		} else {
+			chActionFinished <- 0
+		}
 		<- chPostCtrl
 	}()
 
