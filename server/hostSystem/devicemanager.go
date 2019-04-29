@@ -18,6 +18,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -38,7 +39,8 @@ var upgrader = websocket.Upgrader{
 		return true
 	},
 }
-var standUpChannels []chan StandUpPacket
+var standUpChannels sync.Map
+var standUpStatusRecord sync.Map
 var client = &http.Client{
 	Timeout: time.Second * 5,
 }
@@ -62,26 +64,26 @@ func getConfig(config *Config) error {
 	return nil
 }
 
-func setConfig(c *gin.Context) error {
-	var err error
-
-	var reqConfig Config
-	err = c.ShouldBindJSON(&reqConfig)
-	if err != nil {
-		return err
-	}
-
-	tmp, err := json.Marshal(reqConfig)
-	if err != nil {
-		return err
-	}
-	err = ioutil.WriteFile(ConfigFileName, tmp, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//func setConfig(c *gin.Context) error {
+//	var err error
+//
+//	var reqConfig Config
+//	err = c.ShouldBindJSON(&reqConfig)
+//	if err != nil {
+//		return err
+//	}
+//
+//	tmp, err := json.Marshal(reqConfig)
+//	if err != nil {
+//		return err
+//	}
+//	err = ioutil.WriteFile(ConfigFileName, tmp, 0644)
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 func createClass(c *gin.Context) (err error) {
 	className := c.PostForm("class_name")
@@ -1659,22 +1661,37 @@ func standUp(c *gin.Context) (err error) {
 	if err != nil {
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		err = conn.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
 
-	standUpChannels = append(standUpChannels, make(chan StandUpPacket, 2))
-	readChannelIndex := len(standUpChannels) - 1
-	writeChannelIndex := -1
-
-	standUpStatusTable := StandUpStatusTable{
+	//standUpChannels = append(standUpChannels, make(chan StandUpPacket, 2))
+	standUpRecordID := fmt.Sprintf("%v", time.Now().UnixNano())
+	readChannelIndex := standUpRecordID + "0"
+	standUpStatusRecord.Store(standUpRecordID, &StandUpStatusRecord{
+		ID: standUpRecordID,
 		ClassID: id,
 		TeacherNo: teacherNo,
 		WReadMWriteIndex: readChannelIndex,
-		WWriteMReadIndex: writeChannelIndex,
-	}
-	err = createTableItem(&standUpStatusTable)
-	if err != nil {
-		log.Println(err)
-	}
+		//WWriteMReadIndex: "",
+	})
+	readChannel := make(chan StandUpPacket, 2)
+	var writeChannel *chan StandUpPacket = nil
+	standUpChannels.Store(readChannelIndex, &readChannel)
+
+	//standUpStatusTable := StandUpStatusTable{
+	//	ClassID: id,
+	//	TeacherNo: teacherNo,
+	//	WReadMWriteIndex: readChannelIndex,
+	//	WWriteMReadIndex: writeChannelIndex,
+	//}
+	//err = createTableItem(&standUpStatusTable)
+	//if err != nil {
+	//	log.Println(err)
+	//}
 
 	var currentPDFPage int
 	var faceRectNos []FaceRectToken
@@ -1721,9 +1738,9 @@ func standUp(c *gin.Context) (err error) {
 				currentPDFPage = standUpPacket.CurrentPDFPage
 			}
 
-			if writeChannelIndex > 0 {
+			if writeChannel != nil {
 				select {
-				case standUpChannels[writeChannelIndex] <- standUpPacket:
+				case *writeChannel <- standUpPacket:
 				default:
 				}
 			}
@@ -1793,7 +1810,7 @@ func standUp(c *gin.Context) (err error) {
 				log.Println(err)
 			}
 
-			if writeChannelIndex > 0 {
+			if writeChannel != nil {
 				studentWarningList := ""
 				for _, v := range _studentsStatus {
 					headPose := v.Attributes.HeadPose
@@ -1843,7 +1860,7 @@ func standUp(c *gin.Context) (err error) {
 						StudentWarningRecordList: studentWarningToIntList(studentWarningRecordList),
 					}
 					select {
-					case standUpChannels[writeChannelIndex] <- _standUpPacket:
+					case *writeChannel <- _standUpPacket:
 					default:
 					}
 				}
@@ -1858,7 +1875,7 @@ func standUp(c *gin.Context) (err error) {
 	var startData []byte
 	startData, err = json.Marshal(StandUpPacket{
 		WReadMWriteIndex: readChannelIndex,
-		WWriteMReadIndex: writeChannelIndex,
+		//WWriteMReadIndex: writeChannelIndex,
 	})
 	if err != nil {
 		return
@@ -1873,16 +1890,18 @@ func standUp(c *gin.Context) (err error) {
 		select {
 		case _, ok := <-done:
 			if !ok {
-				err = deleteTableItem(&standUpStatusTable)
-				if err != nil {
-					log.Println(err)
-				}
-				close(standUpChannels[readChannelIndex])
-				if writeChannelIndex > 0 {
+				//err = deleteTableItem(&standUpStatusTable)
+				//if err != nil {
+				//	log.Println(err)
+				//}
+				standUpStatusRecord.Delete(standUpRecordID)
+				close(readChannel)
+				standUpChannels.Delete(readChannelIndex)
+				if writeChannel != nil {
 					closePack := StandUpPacket{
 						SayGoodbye: true,
 					}
-					standUpChannels[writeChannelIndex] <- closePack
+					*writeChannel <- closePack
 				}
 
 				var finalStudentStatus, finalStudentWarningRecordList []byte
@@ -1915,10 +1934,20 @@ func standUp(c *gin.Context) (err error) {
 				}
 				return
 			}
-		case standUpPacket, ok := <-standUpChannels[readChannelIndex]:
+		case standUpPacket, ok := <-readChannel:
 			if ok {
-				if standUpPacket.WWriteMReadIndex > 0 {
-					writeChannelIndex = standUpPacket.WWriteMReadIndex
+				if len(standUpPacket.WWriteMReadIndex) > 0 {
+					//writeChannelIndex = standUpPacket.WWriteMReadIndex
+					_v, existed := standUpChannels.Load(standUpPacket.WWriteMReadIndex)
+					if existed {
+						if _writeChannel, _typeOK := _v.(*chan StandUpPacket); _typeOK {
+							writeChannel = _writeChannel
+						} else {
+							log.Println("WWriteMReadIndex in standUpPacket not type of chan StandUpPacket!")
+						}
+					} else {
+						log.Println("WWriteMReadIndex not existed!")
+					}
 				}
 
 				if standUpPacket.RequestStartPacket {
@@ -1933,7 +1962,7 @@ func standUp(c *gin.Context) (err error) {
 						startPacket.FaceCountClose = true
 					}
 
-					standUpChannels[writeChannelIndex] <- startPacket
+					*writeChannel <- startPacket
 				}
 
 				var data []byte
@@ -1954,56 +1983,62 @@ func standUp(c *gin.Context) (err error) {
 
 func standUpMobile(c *gin.Context) (err error) {
 	classID := c.Query("class_id")
-	writeChannelIndex := c.Query("write_channel_index")
+	//writeChannelIndex := c.Query("write_channel_index")
 
-	if classID == "" || writeChannelIndex == "" {
-		err = fmt.Errorf("no class id or write_channel_index")
+	if classID == "" {
+		err = fmt.Errorf("no class id")
 		return
 	}
 
-	var readIndex, writeIndex = -1, -1
 	var id int
 	id, err = strconv.Atoi(classID)
 	if err != nil {
 		return
 	}
-	var standUpStatus *StandUpStatusTable
-	standUpStatus, err = getStandUpStatus(id)
+	var standUpStatus *StandUpStatusRecord
+	standUpStatus, err = getStandUpStatusRecord(id, "")
 	if err != nil {
-		return
-	}
-	if standUpStatus.ID == 0 {
 		err = fmt.Errorf("not stand up")
 		return
 	}
 
-	readIndex = standUpStatus.WWriteMReadIndex
-	writeIndex = standUpStatus.WReadMWriteIndex
+	readChannelIndex := standUpStatus.WWriteMReadIndex
+	writeChannelIndex := standUpStatus.WReadMWriteIndex
+	var readChannel *chan StandUpPacket
+	var writeChannel *chan StandUpPacket
 
-	if readIndex <= 0 {
-		standUpChannels = append(standUpChannels, make(chan StandUpPacket, 2))
-		readIndex = len(standUpChannels) - 1
-
-		newStandUpStatus := standUpStatus
-		newStandUpStatus.WWriteMReadIndex = readIndex
-		err = updateTableItem(standUpStatus, *newStandUpStatus)
-		if err != nil {
-			log.Println(err)
-		}
-
-		standUpChannels[writeIndex] <- StandUpPacket{
-			WWriteMReadIndex: readIndex,
+	_v, existed := standUpChannels.Load(standUpStatus.WReadMWriteIndex)
+	if existed {
+		if _writeChannel, _typeOK := _v.(*chan StandUpPacket); _typeOK {
+			writeChannel = _writeChannel
+		} else {
+			log.Println("standUpMobile WReadMWriteIndex in standUpPacket not type of chan StandUpPacket!")
 		}
 	} else {
-		var _writeIndex int
-		_writeIndex, err = strconv.Atoi(writeChannelIndex)
-		if err != nil {
-			return
-		}
+		log.Println("standUpMobile WReadMWriteIndex not existed!")
+	}
 
-		if writeIndex != _writeIndex {
-			err = fmt.Errorf("write channel index not match")
-			return
+	if !(len(readChannelIndex) > 0) {
+		_readChannel := make(chan StandUpPacket, 2)
+		readChannel = &_readChannel
+		readChannelIndex = writeChannelIndex + "0"
+		standUpChannels.Store(readChannelIndex, &readChannel)
+
+		standUpStatus.WWriteMReadIndex = readChannelIndex
+
+		*writeChannel <- StandUpPacket{
+			WWriteMReadIndex: readChannelIndex,
+		}
+	} else {
+		_v, existed := standUpChannels.Load(standUpStatus.WWriteMReadIndex)
+		if existed {
+			if _readChannel, _typeOK := _v.(*chan StandUpPacket); _typeOK {
+				readChannel = _readChannel
+			} else {
+				log.Println("standUpMobile WWriteMReadIndex in standUpPacket not type of chan StandUpPacket!")
+			}
+		} else {
+			log.Println("standUpMobile WWriteMReadIndex not existed!")
 		}
 	}
 
@@ -2014,6 +2049,7 @@ func standUpMobile(c *gin.Context) (err error) {
 	defer conn.Close()
 
 	done := make(chan string)
+	deleteReadChannelFlag := false
 	go func() {
 		defer close(done)
 
@@ -2032,22 +2068,29 @@ func standUpMobile(c *gin.Context) (err error) {
 			}
 
 			select {
-			case standUpChannels[writeIndex] <- standUpPacket:
+			case *writeChannel <- standUpPacket:
 			default:
 			}
 		}
 	}()
 
 	startPacket := StandUpPacket{ RequestStartPacket: true }
-	standUpChannels[writeIndex] <- startPacket
+	*writeChannel <- startPacket
 
 	for {
 		select {
 		case <-done:
-			close(standUpChannels[readIndex])
+			close(*readChannel)
+			if deleteReadChannelFlag {
+				standUpChannels.Delete(readChannelIndex)
+			}
 			return
-		case standUpPacket, ok := <-standUpChannels[readIndex]:
+		case standUpPacket, ok := <-*readChannel:
 			if ok {
+				if standUpPacket.SayGoodbye {
+					deleteReadChannelFlag = true
+				}
+
 				var data []byte
 				data, err = json.Marshal(standUpPacket)
 				if err != nil {
@@ -2137,11 +2180,8 @@ func getStudentsStatus(camStreamPath, devicePath string, faceRectNos []FaceRectT
 func currentStandUp(c *gin.Context) (err error) {
 	teacherNo := c.Query("teacher_no")
 
-	standUpStatus, err := getStandUpStatusByTeacherNo(teacherNo)
+	standUpStatus, err := getStandUpStatusRecord(-1, teacherNo)
 	if err != nil {
-		return
-	}
-	if standUpStatus.ID == 0 {
 		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no class"})
 		return
 	}
@@ -2631,11 +2671,46 @@ func studentWarningToIntList(record []StudentWarningRecord) (list []int) {
 	return
 }
 
-func clearDBError(c *gin.Context) (err error) {
-	err = clearStandUpStatusTable()
-	if err != nil {
+//func clearDBError(c *gin.Context) (err error) {
+//	err = clearStandUpStatusTable()
+//	if err != nil {
+//		return
+//	}
+//
+//	return
+//}
+
+func getStandUpStatusRecord(classID int, teacherNo string) (record *StandUpStatusRecord, err error) {
+	if classID > 0 {
+		standUpChannels.Range(func(key, value interface{}) bool {
+			if _r, ok := value.(*StandUpStatusRecord); ok {
+				if _r.ClassID == classID {
+					record = _r
+					return false
+				}
+			}
+			return true
+		})
+		if record == nil {
+			err = fmt.Errorf("no standUp status record classID %v or teacherNo %v", classID, teacherNo)
+		}
+		return
+	} else if len(teacherNo) > 0 {
+		standUpChannels.Range(func(key, value interface{}) bool {
+			if _r, ok := value.(*StandUpStatusRecord); ok {
+				if _r.TeacherNo == teacherNo {
+					record = _r
+					return false
+				}
+			}
+			return true
+		})
+		if record == nil {
+			err = fmt.Errorf("no standUp status record type mismatch classID %v or teacherNo %v", classID, teacherNo)
+		}
 		return
 	}
 
+	err = fmt.Errorf("no standUp status record for classID %v or teacherNo %v", classID, teacherNo)
 	return
 }

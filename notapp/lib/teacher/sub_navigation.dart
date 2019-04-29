@@ -205,12 +205,13 @@ class _StandUpClassPageState extends State<StandUpClassPage> {
 
   _handleStudentWarringNotification(StandUpPacket sup) {
     if (sup.studentWarningList != null && sup.studentWarningList.length > 0) {
-      Flushbar(flushbarPosition: FlushbarPosition.TOP,)
-        ..title = "以下学生可能未认真听课(学号): "
-        ..message = sup.studentWarningList
-        ..icon = Icon(Icons.error_outline, color: Theme.of(context).primaryColor, size: 28,)
-        ..duration = Duration(seconds: 4)
-        ..show(context);
+      Flushbar(
+        flushbarPosition: FlushbarPosition.TOP,
+        title: "以下学生可能未认真听课(学号): ",
+        message: sup.studentWarningList,
+        icon: Icon(Icons.error_outline, color: Theme.of(context).primaryColor, size: 28,),
+        duration: Duration(seconds: 4),
+      )..show(context);
     }
   }
 
@@ -284,11 +285,11 @@ class SettingPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
-              new MaterialButton(
-                color: Colors.white,
-                onPressed: () => _clearError(),
-                child: new Text("清除错误"),
-              ),
+//              new MaterialButton(
+//                color: Colors.white,
+//                onPressed: () => _clearError(),
+//                child: new Text("清除错误"),
+//              ),
               new MaterialButton(
                 color: Colors.white,
                 onPressed: () => _onLogoutButtonPressed(context),
@@ -310,15 +311,15 @@ class SettingPage extends StatelessWidget {
     }));
   }
 
-  _clearError() async {
-    Response response;
-
-    try {
-      response = await dio.get("/clear");
-    } catch (err) {
-      print(err);
-    }
-  }
+//  _clearError() async {
+//    Response response;
+//
+//    try {
+//      response = await dio.get("/clear");
+//    } catch (err) {
+//      print(err);
+//    }
+//  }
 }
 
 class NormalClassPage extends StatefulWidget {

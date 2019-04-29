@@ -17,7 +17,7 @@ func main() {
 		return
 	}
 
-	//go updateStats()
+	go updateStats()
 
 	router := setupRouter()
 	err = router.Run(config.LocalPort)
@@ -224,110 +224,54 @@ func setupRouter() *gin.Engine {
 	})
 
 	// 教室
-	router.POST("/classrooms", func(c *gin.Context) {
-		if err := createClassroom(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "create classroom error"})
-		}
-	})
-	router.GET("/classrooms", func(c *gin.Context) {
-		if err := sendClassrooms(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send classrooms error"})
-		}
-	})
-	router.PATCH("/classrooms", func(c *gin.Context) {
-		if err := updateClassrooms(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "update classrooms error"})
-		}
-	})
-	router.DELETE("/classrooms", func(c *gin.Context) {
-		if err := deleteClassrooms(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "delete classrooms error"})
-		}
-	})
+	router.POST("/classrooms", handlerFunc(createClassroom, "create classroom error"))
+	router.GET("/classrooms", handlerFunc(sendClassrooms, "get classrooms error"))
+	router.PATCH("/classrooms", handlerFunc(updateClassrooms, "update classrooms error"))
+	router.DELETE("/classrooms", handlerFunc(deleteClassrooms, "delete classrooms error"))
 
 	// 设置
-	router.GET("/config", func(c *gin.Context) {
-		c.JSON(http.StatusOK, config)
-	})
-	router.POST("/config", func(c *gin.Context) {
-		if err := setConfig(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "can not set config"})
-		}
-	})
+	//router.GET("/config", func(c *gin.Context) {
+	//	c.JSON(http.StatusOK, config)
+	//})
+	//router.POST("/config", func(c *gin.Context) {
+	//	if err := setConfig(c); err != nil {
+	//		log.Println(err)
+	//		c.JSON(http.StatusInternalServerError, JsonMessage{Message: "can not set config"})
+	//	}
+	//})
 
 	// 用户
-	router.POST("/user/login", func(c *gin.Context) {
-		if err := userLogin(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "user login error"})
-		}
-	})
-	router.GET("/user", func(c *gin.Context) {
-		if err := sendUserInfo(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send userInfo error"})
-		}
-	})
-	router.GET("/user/logout", func(c *gin.Context) {
-		if err := userLogout(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "user logout error"})
-		}
-	})
-	router.POST("/user/mobile_login", func(c *gin.Context) {
-		if err := mobileUserLogin(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "mobile user login error"})
-		}
-	})
+	router.POST("/user/login", handlerFunc(userLogin, "user login error"))
+	router.GET("/user", handlerFunc(sendUserInfo, "get userInfo error"))
+	router.GET("/user/logout", handlerFunc(userLogout, "user logout error"))
+	router.POST("/user/mobile_login", handlerFunc(mobileUserLogin, "mobile user login error"))
 
 	// 仪表盘
-	router.GET("/dashboard", func(c *gin.Context) {
-		if err := sendDashBoard(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send dashboard error"})
-		}
-	})
+	router.GET("/dashboard",handlerFunc(sendDashBoard, "get dashboard error"))
 
 	// 图片
-	router.GET("/images/:name", func(c *gin.Context) {
-		if err := sendImage(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send image error"})
-		}
-	})
-	router.POST("/images", func(c *gin.Context) {
-		if err := saveImage(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "save image error"})
-		}
-	})
+	router.GET("/images/:name", handlerFunc(sendImage, "get image error"))
+	router.POST("/images", handlerFunc(saveImage, "save image error"))
 
 	//PDF
-	router.GET("/pdf/:name", func(c *gin.Context) {
-		if err := sendPDF(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "send pdf error"})
-		}
-	})
-	router.POST("/pdf", func(c *gin.Context) {
-		if err := savePDF(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "save pdf error"})
-		}
-	})
+	router.GET("/pdf/:name", handlerFunc(sendPDF, "get pdf error"))
+	router.POST("/pdf", handlerFunc(savePDF, "save pdf error"))
 
-	router.GET("/clear", func(c *gin.Context) {
-		if err := clearDBError(c); err != nil {
-			log.Println(err)
-			c.JSON(http.StatusInternalServerError, JsonMessage{Message: "clear"})
-		}
-	})
+	//router.GET("/clear", func(c *gin.Context) {
+	//	if err := clearDBError(c); err != nil {
+	//		log.Println(err)
+	//		c.JSON(http.StatusInternalServerError, JsonMessage{Message: "clear"})
+	//	}
+	//})
 
 	return router
+}
+
+func handlerFunc(handler func(c *gin.Context) (err error), jsonMessage string) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		if err := handler(c); err != nil {
+			log.Println(err)
+			c.JSON(http.StatusInternalServerError, JsonMessage{Message: jsonMessage})
+		}
+	}
 }

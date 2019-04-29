@@ -21,7 +21,7 @@ func init() {
 		log.Println("failed to connect database")
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.AutoMigrate(&Class{})
 	db.AutoMigrate(&Student{})
@@ -33,7 +33,7 @@ func init() {
 	db.AutoMigrate(&ClassroomStatsTable{})
 	db.AutoMigrate(&DeviceManagerSystemStats{})
 	db.AutoMigrate(&FaceCountRecord{})
-	db.AutoMigrate(&StandUpStatusTable{})
+	//db.AutoMigrate(&StandUpStatusTable{})
 	db.AutoMigrate(&StudentStatusTable{})
 }
 
@@ -44,7 +44,7 @@ func getAllClasses() ([]Class, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	var classes []Class
 	db.Order("created_at desc").Find(&classes)
@@ -72,7 +72,7 @@ func getClass(id int) (class *Class, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.First(class, "id = ?", id)
 	if class.ID == 0 {
@@ -82,23 +82,23 @@ func getClass(id int) (class *Class, err error) {
 	return
 }
 
-func getClasses(ids []int) (classes []Class, err error) {
-	db, err := gorm.Open(DB, DBName)
-	if err != nil {
-		return
-	}
-	defer db.Close()
-
-	db.Find(&classes, "id in (?)", ids)
-	return
-}
+//func getClasses(ids []int) (classes []Class, err error) {
+//	db, err := gorm.Open(DB, DBName)
+//	if err != nil {
+//		return
+//	}
+//	defer closeDB(db)
+//
+//	db.Find(&classes, "id in (?)", ids)
+//	return
+//}
 
 func getClassesByName(className string) (classes []Class, err error) {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Find(&classes, "class_name = ?", className)
 	return
@@ -109,7 +109,7 @@ func getClassesByStudentNo(studentNo string) (classes []Class, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	var student Student
 	db.First(&student, "student_no = ?", studentNo)
@@ -123,7 +123,7 @@ func getClassesByTeacherNo(teacherNo string) (classes []Class, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	var teacher Teacher
 	db.First(&teacher, "teacher_no = ?", teacherNo)
@@ -139,7 +139,7 @@ func getAllDevices() (devices []Device, err error) {
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Order("created_at desc").Find(&devices)
 	return
@@ -152,7 +152,7 @@ func getDevice(id int) (device *Device, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.First(device, "id = ?", id)
 	if device.ID == 0 {
@@ -169,7 +169,7 @@ func getDeviceByPath(devicePath string) (device *Device, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.First(device, "device_path = ?", devicePath)
 	if device.ID == 0 {
@@ -184,7 +184,7 @@ func getDevicesByCamera(cameraID int) (devices []Device, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	var camera Camera
 	db.First(&camera, "id = ?", cameraID)
@@ -200,7 +200,7 @@ func getClassroom(no string) (classroom *Classroom, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.First(classroom, "classroom_no = ?", no)
 	if classroom.ID == 0 {
@@ -209,28 +209,28 @@ func getClassroom(no string) (classroom *Classroom, err error) {
 	return
 }
 
-func getClassroomByID(id int) (classroom *Classroom, err error) {
-	classroom = &Classroom{}
-
-	db, err := gorm.Open(DB, DBName)
-	if err != nil {
-		return
-	}
-	defer db.Close()
-
-	db.First(classroom, "id = ?", id)
-	if classroom.ID == 0 {
-		err = fmt.Errorf("can not find classroom for no %v", id)
-	}
-	return
-}
+//func getClassroomByID(id int) (classroom *Classroom, err error) {
+//	classroom = &Classroom{}
+//
+//	db, err := gorm.Open(DB, DBName)
+//	if err != nil {
+//		return
+//	}
+//	defer closeDB(db)
+//
+//	db.First(classroom, "id = ?", id)
+//	if classroom.ID == 0 {
+//		err = fmt.Errorf("can not find classroom for no %v", id)
+//	}
+//	return
+//}
 
 func getAllClassrooms() (classrooms []Classroom, err error) {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Order("created_at desc").Find(&classrooms)
 	return
@@ -241,7 +241,7 @@ func getClassroomsByCamera(cameraID int) (classrooms []Classroom, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	var camera Camera
 	db.First(&camera, "id = ?", cameraID)
@@ -257,7 +257,7 @@ func getStudent(studentNo string) (student *Student, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.First(student, "student_no = ?", studentNo)
 	if student.ID == 0 {
@@ -273,7 +273,7 @@ func getStudentByFaceToken(token string) (student *Student, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.First(student, "face_token = ?", token)
 	if student.ID == 0 {
@@ -287,7 +287,7 @@ func getStudentsByClass(classID int) (students []Student, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	var class Class
 	db.First(&class, "id = ?", classID)
@@ -296,23 +296,23 @@ func getStudentsByClass(classID int) (students []Student, err error) {
 	return
 }
 
-func getStudents(studentNos []string) (students []Student, err error) {
-	db, err := gorm.Open(DB, DBName)
-	if err != nil {
-		return
-	}
-	defer db.Close()
-
-	db.Find(&students, "student_no in (?)", studentNos)
-	return
-}
+//func getStudents(studentNos []string) (students []Student, err error) {
+//	db, err := gorm.Open(DB, DBName)
+//	if err != nil {
+//		return
+//	}
+//	defer closeDB(db)
+//
+//	db.Find(&students, "student_no in (?)", studentNos)
+//	return
+//}
 
 func getAllStudents() (students []Student, err error) {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Order("created_at desc").Order("created_at desc").Find(&students)
 	return
@@ -323,7 +323,7 @@ func getTeachers(teachersNos []string) (teachers []Teacher, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Find(&teachers, "teacher_no in (?)", teachersNos)
 	return
@@ -334,7 +334,7 @@ func getTeachersByClass(classID int) (teachers []Teacher, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	var class Class
 	db.First(&class, "id = ?", classID)
@@ -350,7 +350,7 @@ func getTeacher(no string) (teacher *Teacher, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.First(teacher, "teacher_no = ?", no)
 	if teacher.ID == 0 {
@@ -364,7 +364,7 @@ func getAllTeachers() (teachers []Teacher, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Order("created_at desc").Find(&teachers)
 	return
@@ -377,7 +377,7 @@ func getClassroomStatsItem(classroomNo string) (stats *ClassroomStatsTable, err 
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Last(stats, "classroom_no = ?", classroomNo)
 	if stats.ID == 0 {
@@ -391,7 +391,7 @@ func getDeviceStats(deviceID int) (stats []DeviceStatsTable, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Order("created_at desc").Limit(10).Find(&stats, "device_id = ?", deviceID)
 	return
@@ -404,7 +404,7 @@ func getCamera(cameraID int) (camera *Camera, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.First(camera, "id = ?", cameraID)
 	if camera.ID == 0 {
@@ -418,7 +418,7 @@ func getCameras(cameraIDs []int) (cameras []Camera, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Find(&cameras, "id in (?)", cameraIDs)
 	return
@@ -429,7 +429,7 @@ func getCamerasByDevice(deviceID int) (cameras []Camera, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	var device Device
 	db.First(&device, "id = ?", deviceID)
@@ -443,7 +443,7 @@ func getCamerasByClassroom(classroomNo string) (cameras []Camera, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	var classroom Classroom
 	db.First(&classroom, "classroom_no = ?", classroomNo)
@@ -457,7 +457,7 @@ func getAllCameras() (cameras []Camera, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Find(&cameras)
 	return
@@ -468,7 +468,7 @@ func getDeviceManagerSystemStats() (systemStats []DeviceManagerSystemStats, err 
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Order("created_at desc").Limit(10).Find(&systemStats)
 	return
@@ -479,7 +479,7 @@ func getDeviceCameraCount() (devices int, cameras int, err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Table("devices").Count(&devices)
 	db.Table("cameras").Count(&cameras)
@@ -493,7 +493,7 @@ func getLastFaceCountRecord(classID int) (faceCountRecord *FaceCountRecord, err 
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Last(&faceCountRecord, "class_id = ?", classID)
 	if faceCountRecord.ID == 0 {
@@ -509,7 +509,7 @@ func getFaceCountRecordByID(id int) (faceCountRecord *FaceCountRecord, err error
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.First(&faceCountRecord, "id = ?", id)
 	if faceCountRecord.ID == 0 {
@@ -518,38 +518,38 @@ func getFaceCountRecordByID(id int) (faceCountRecord *FaceCountRecord, err error
 	return
 }
 
-func getStandUpStatus(classID int) (standUpStatus *StandUpStatusTable, err error) {
-	standUpStatus = &StandUpStatusTable{}
-
-	db, err := gorm.Open(DB, DBName)
-	if err != nil {
-		return
-	}
-	defer db.Close()
-
-	db.Last(&standUpStatus, "class_id = ?", classID)
-	return
-}
-
-func getStandUpStatusByTeacherNo(teacherNo string) (standUpStatus *StandUpStatusTable, err error) {
-	standUpStatus = &StandUpStatusTable{}
-
-	db, err := gorm.Open(DB, DBName)
-	if err != nil {
-		return
-	}
-	defer db.Close()
-
-	db.Last(&standUpStatus, "teacher_no = ?", teacherNo)
-	return
-}
+//func getStandUpStatus(classID int) (standUpStatus *StandUpStatusTable, err error) {
+//	standUpStatus = &StandUpStatusTable{}
+//
+//	db, err := gorm.Open(DB, DBName)
+//	if err != nil {
+//		return
+//	}
+//	defer closeDB(db)
+//
+//	db.Last(&standUpStatus, "class_id = ?", classID)
+//	return
+//}
+//
+//func getStandUpStatusByTeacherNo(teacherNo string) (standUpStatus *StandUpStatusTable, err error) {
+//	standUpStatus = &StandUpStatusTable{}
+//
+//	db, err := gorm.Open(DB, DBName)
+//	if err != nil {
+//		return
+//	}
+//	defer closeDB(db)
+//
+//	db.Last(&standUpStatus, "teacher_no = ?", teacherNo)
+//	return
+//}
 
 func getStudentStatusRecordByClass(classID int) (studentStatus []StudentStatusTable, err error) {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Order("created_at desc").Find(&studentStatus, "class_id = ?", classID)
 	return
@@ -560,40 +560,40 @@ func getStudentStatusRecordByTeacher(teacherNo string) (studentStatus []StudentS
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Order("created_at desc").Find(&studentStatus, "teacher_no = ?", teacherNo)
 	return
 }
 
-func clearStandUpStatusTable() (err error) {
-	db, err := gorm.Open(DB, DBName)
-	if err != nil {
-		return
-	}
-	defer db.Close()
+//func clearStandUpStatusTable() (err error) {
+//	db, err := gorm.Open(DB, DBName)
+//	if err != nil {
+//		return
+//	}
+//	defer closeDB(db)
+//
+//	db.Unscoped().Delete(&StandUpStatusTable{}, "id >= 1")
+//	return
+//}
 
-	db.Unscoped().Delete(&StandUpStatusTable{}, "id >= 1")
-	return
-}
-
-func getTableCount(tableName string) (count int, err error) {
-	db, err := gorm.Open(DB, DBName)
-	if err != nil {
-		return
-	}
-	defer db.Close()
-
-	db.Table(tableName).Count(&count)
-	return
-}
+//func getTableCount(tableName string) (count int, err error) {
+//	db, err := gorm.Open(DB, DBName)
+//	if err != nil {
+//		return
+//	}
+//	defer closeDB(db)
+//
+//	db.Table(tableName).Count(&count)
+//	return
+//}
 
 func createTableItem(v interface{}) error {
 	db, err := gorm.Open(DB, DBName)
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Create(v)
 
@@ -605,7 +605,7 @@ func updateTableItem(old, new interface{}) (err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Model(old).Update(new)
 	return
@@ -616,7 +616,7 @@ func deleteTableItem(v interface{}) (err error) {
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Unscoped().Delete(v)
 	return
@@ -627,7 +627,7 @@ func deleteTableItems(v interface{}, formatString string, value interface{}) (er
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	db.Unscoped().Where(formatString, value).Delete(v)
 	return
@@ -638,7 +638,7 @@ func updateAssociation(value interface{}, foreignKey string, replace interface{}
 	if err != nil {
 		return
 	}
-	defer db.Close()
+	defer closeDB(db)
 
 	_replace := reflect.ValueOf(replace)
 	if _replace.Kind() != reflect.Slice {
@@ -656,4 +656,11 @@ func updateAssociation(value interface{}, foreignKey string, replace interface{}
 		db.Model(value).Association(foreignKey).Append(v)
 	}
 	return
+}
+
+func closeDB(db *gorm.DB) {
+	err := db.Close()
+	if err != nil {
+		log.Println(err)
+	}
 }

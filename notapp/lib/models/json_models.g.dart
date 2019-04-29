@@ -8,8 +8,6 @@ part of 'json_models.dart';
 
 StandUpPacket _$StandUpPacketFromJson(Map<String, dynamic> json) {
   return StandUpPacket(
-      wReadMWriteIndex: json['WReadMWriteIndex'] as int,
-      wWriteMReadIndex: json['WWriteMReadIndex'] as int,
       faceCountClose: json['FaceCountClose'] as bool,
       faceCountRecordID: json['FaceCountRecordID'] as int,
       currentPDFPage: json['CurrentPDFPage'] as int,
@@ -25,8 +23,6 @@ StandUpPacket _$StandUpPacketFromJson(Map<String, dynamic> json) {
 
 Map<String, dynamic> _$StandUpPacketToJson(StandUpPacket instance) =>
     <String, dynamic>{
-      'WReadMWriteIndex': instance.wReadMWriteIndex,
-      'WWriteMReadIndex': instance.wWriteMReadIndex,
       'FaceCountClose': instance.faceCountClose,
       'FaceCountRecordID': instance.faceCountRecordID,
       'CurrentPDFPage': instance.currentPDFPage,
@@ -79,14 +75,16 @@ Map<String, dynamic> _$ClassesResponseToJson(ClassesResponse instance) =>
 
 StandUpStatus _$StandUpStatusFromJson(Map<String, dynamic> json) {
   return StandUpStatus(
+      id: json['id'] as int,
       classID: json['class_id'] as int,
       teacherNo: json['teacher_no'] as String,
-      wReadMWriteIndex: json['WReadMWriteIndex'] as int,
-      wWriteMReadIndex: json['WWriteMReadIndex'] as int);
+      wReadMWriteIndex: json['WReadMWriteIndex'] as String,
+      wWriteMReadIndex: json['WWriteMReadIndex'] as String);
 }
 
 Map<String, dynamic> _$StandUpStatusToJson(StandUpStatus instance) =>
     <String, dynamic>{
+      'id': instance.id,
       'class_id': instance.classID,
       'teacher_no': instance.teacherNo,
       'WReadMWriteIndex': instance.wReadMWriteIndex,

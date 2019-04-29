@@ -5,8 +5,6 @@ part 'json_models.g.dart';
 @JsonSerializable()
 class StandUpPacket {
   StandUpPacket({
-    this.wReadMWriteIndex = 0,
-    this.wWriteMReadIndex = 0,
     this.faceCountClose = false,
     this.faceCountRecordID = 0,
     this.currentPDFPage = 0,
@@ -17,12 +15,6 @@ class StandUpPacket {
     this.studentWarningRecordList,
     this.sayGoodbye = false,
   });
-
-  @JsonKey(name: 'WReadMWriteIndex')
-  int wReadMWriteIndex;
-
-  @JsonKey(name: 'WWriteMReadIndex')
-  int wWriteMReadIndex;
 
   @JsonKey(name: 'FaceCountClose')
   bool faceCountClose;
@@ -96,8 +88,11 @@ class ClassesResponse {
 
 @JsonSerializable()
 class StandUpStatus {
-  StandUpStatus({this.classID, this.teacherNo, this.wReadMWriteIndex,
+  StandUpStatus({this.id, this.classID, this.teacherNo, this.wReadMWriteIndex,
       this.wWriteMReadIndex});
+
+  @JsonKey(name: 'id')
+  int id;
 
   @JsonKey(name: 'class_id')
   int classID;
@@ -106,10 +101,10 @@ class StandUpStatus {
   String teacherNo;
 
   @JsonKey(name: 'WReadMWriteIndex')
-  int wReadMWriteIndex;
+  String wReadMWriteIndex;
 
   @JsonKey(name: 'WWriteMReadIndex')
-  int wWriteMReadIndex;
+  String wWriteMReadIndex;
 
   factory StandUpStatus.fromJson(Map<String, dynamic> json) => _$StandUpStatusFromJson(json);
   Map<String, dynamic> toJson() => _$StandUpStatusToJson(this);

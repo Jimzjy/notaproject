@@ -85,7 +85,7 @@ class _ClassPageState extends State<ClassesPage> {
                       ),
                       onTap: () {
                         _navigateToStandUpPage(
-                            "/stand_up_mobile?class_id=${_standUpStatus.classID}&write_channel_index=${_standUpStatus.wReadMWriteIndex}",
+                            "/ws/stand_up_mobile?class_id=${_standUpStatus.classID}&write_channel_index=${_standUpStatus.wReadMWriteIndex}",
                             currentClass);
                       },
                     ),

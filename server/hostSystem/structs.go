@@ -97,8 +97,8 @@ type JsonMessage struct {
 }
 
 type StandUpPacket struct {
-	WReadMWriteIndex int
-	WWriteMReadIndex int
+	WReadMWriteIndex string
+	WWriteMReadIndex string
 	FaceCountClose bool
 	FaceCountRecordID int
 	CurrentPDFPage int
@@ -116,13 +116,20 @@ type StudentWarningRecord struct {
 	LastWarning bool `json:"last_warning"`
 }
 
-type StandUpStatusTable struct {
-	gorm.Model
+type StandUpStatusRecord struct {
+	ID string `json:"id"`
 	ClassID int `json:"class_id"`
 	TeacherNo string `json:"teacher_no"`
-	WReadMWriteIndex int
-	WWriteMReadIndex int
+	WReadMWriteIndex string
+	WWriteMReadIndex string
 }
+//type StandUpStatusTable struct {
+//	gorm.Model
+//	ClassID int `json:"class_id"`
+//	TeacherNo string `json:"teacher_no"`
+//	WReadMWriteIndex int
+//	WWriteMReadIndex int
+//}
 
 type StudentStatusTable struct {
 	gorm.Model
