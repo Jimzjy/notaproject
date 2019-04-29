@@ -73,7 +73,7 @@ func main() {
 	C.free(unsafe.Pointer(paramBody))
 	C.free(unsafe.Pointer(modelBody))
 
-	//go uploadStats()
+	go uploadStats()
 
 	router := setupRouter()
 	err = router.Run(config.LocalPort)
@@ -269,28 +269,32 @@ func getSearchData(camStreamPath, faceSetToken string, chPersonData chan PersonD
 		GlobalHeight: globalHeight,
 	}
 
-	chPostCtrl := make(chan string, config.Qps)
-	chActionFinished := make(chan byte)
-	count := 0
+	//chPostCtrl := make(chan string, config.Qps)
+	//chActionFinished := make(chan byte)
+	//count := 0
 	for _, v := range faceDetectResults.Faces {
 		_personData := personData
 
-		go sendFacePostForm(faceSetToken, v, _personData, chPersonData, chPostCtrl, &count, chActionFinished, personCount)
+		//go sendFacePostForm(faceSetToken, v, _personData, chPersonData, chPostCtrl, &count, chActionFinished, personCount)
+		err = sendFacePostForm(faceSetToken, v, _personData, chPersonData)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
-	<- chActionFinished
+	//<- chActionFinished
 }
 
-func sendFacePostForm(faceSetToken string, face FaceAnalyzeResult, _personData PersonData, chPersonData chan PersonData, chPostCtrl chan string, count *int, chActionFinished chan byte, personCount int) {
-	chPostCtrl <- ""
-	defer func() {
-		if *count < personCount - 1 {
-			*count += 1
-		} else {
-			chActionFinished <- 0
-		}
-		<- chPostCtrl
-	}()
+func sendFacePostForm(faceSetToken string, face FaceAnalyzeResult, _personData PersonData, chPersonData chan PersonData) (err error) {
+	//chPostCtrl <- ""
+	//defer func() {
+	//	if *count < personCount - 1 {
+	//		*count += 1
+	//	} else {
+	//		chActionFinished <- 0
+	//	}
+	//	<- chPostCtrl
+	//}()
 
 	body, err := sendPostForm(url.Values{
 		"api_key": {config.ApiKey},
@@ -299,7 +303,7 @@ func sendFacePostForm(faceSetToken string, face FaceAnalyzeResult, _personData P
 		"face_token": {face.FaceToken},
 	}, config.SearchFaceUrl)
 	if err != nil {
-		log.Println(err)
+		//log.Println(err)
 		_personData.Face.FaceRectangle = face.FaceRectangle
 		chPersonData <- _personData
 		return
@@ -308,7 +312,7 @@ func sendFacePostForm(faceSetToken string, face FaceAnalyzeResult, _personData P
 	var searchFaceResponse SearchFaceResults
 	err = json.Unmarshal(body, &searchFaceResponse)
 	if err != nil {
-		log.Println(err)
+		//log.Println(err)
 		_personData.Face.FaceRectangle = face.FaceRectangle
 		chPersonData <- _personData
 		return
@@ -435,6 +439,9 @@ func fileUploadRequest(url string, params map[string]string, fileParamName strin
 	}
 
 	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return
+	}
 	request.Header.Add("Content-Type", writer.FormDataContentType())
 
 	response, err := client.Do(request)
