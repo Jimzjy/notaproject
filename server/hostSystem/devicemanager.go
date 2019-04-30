@@ -1580,6 +1580,7 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 	done := make(chan struct{})
 
 	var personData PersonData
+	var faceTokenRecords []string
 	go func() {
 		defer close(done)
 
@@ -1604,6 +1605,13 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 					chanPersonData <- data
 					continue
 				}
+				for _, v := range faceTokenRecords {
+					if v == personData.Face.FaceToken {
+						chanPersonData <- data
+						continue
+					}
+				}
+				faceTokenRecords = append(faceTokenRecords, personData.Face.FaceToken)
 
 				var student *Student
 				student, err = getStudentByFaceToken(personData.Face.FaceToken)
@@ -2121,8 +2129,15 @@ func getStudentsStatus(camStreamPath, devicePath string, faceRectNos []FaceRectT
 		return
 	}
 
+	var studentNoRecords []string
 	for _, v := range faceDetectResults.Faces {
-		for _, v2 := range faceRectNos {
+		FaceRectNosLabel: for _, v2 := range faceRectNos {
+			for _, v3 := range studentNoRecords {
+				if v3 == v2.FaceToken {
+					continue FaceRectNosLabel
+				}
+			}
+
 			dis := math.Sqrt(math.Pow(math.Abs(float64(v.FaceRectangle.Left - v2.FaceRectangle.Left)), 2) +
 				math.Pow(math.Abs(float64(v.FaceRectangle.Top - v2.FaceRectangle.Top)), 2))
 			standard := math.Sqrt(float64(v2.FaceRectangle.Height * v2.FaceRectangle.Height + v2.FaceRectangle.Width * v2.FaceRectangle.Width))

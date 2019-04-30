@@ -332,6 +332,7 @@ func sendFacePostForm(faceSetToken string, face FaceAnalyzeResult, _personData P
 		_personData.Face.FaceRectangle = face.FaceRectangle
 		chPersonData <- _personData
 	}
+	return
 }
 
 func getCameraImage(camStreamPath string, img *gocv.Mat) error {
