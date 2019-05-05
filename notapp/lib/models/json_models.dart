@@ -92,7 +92,7 @@ class StandUpStatus {
       this.wWriteMReadIndex});
 
   @JsonKey(name: 'id')
-  int id;
+  String id;
 
   @JsonKey(name: 'class_id')
   int classID;

@@ -23,12 +23,12 @@ import (
 )
 
 const (
-	RootAddress = "/home/pi/hostSystem/"
+	RootAddress = "/home/jimzjy/hostSystem/"
 	ConfigFileName = RootAddress + "config.json"
 	UpdateStatsTime = 30
 	ImageFileDir = RootAddress + "images/"
 	PDFFileDir = RootAddress + "pdf/"
-	Domain = "192.168.*"
+	Domain = ""
 	PitchAngle = 30
 	EyeClose = 50
 )
@@ -557,6 +557,9 @@ func sendDevices(c *gin.Context) (err error) {
 
 		var device *Device
 		device, err = getDevice(id)
+		if err != nil {
+			return
+		}
 
 		var devicesResponse *DevicesResponse
 		devicesResponse, err = newDevicesResponse([]Device{*device}, page, pageSize)
@@ -1607,7 +1610,10 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 				}
 				for _, v := range faceTokenRecords {
 					if v == personData.Face.FaceToken {
-						chanPersonData <- data
+						personData.Face.FaceToken = ""
+						var dataEmpty []byte
+						dataEmpty, err = json.Marshal(personData)
+						chanPersonData <- dataEmpty
 						continue
 					}
 				}
@@ -1617,7 +1623,10 @@ func handleFaceCountRequest(camSteamPath, faceSetToken, devicePath, devicePort s
 				student, err = getStudentByFaceToken(personData.Face.FaceToken)
 				if err != nil {
 					log.Println(err)
-					chanPersonData <- data
+					personData.Face.FaceToken = ""
+					var dataEmpty []byte
+					dataEmpty, err = json.Marshal(personData)
+					chanPersonData <- dataEmpty
 					continue
 				}
 
@@ -2030,7 +2039,7 @@ func standUpMobile(c *gin.Context) (err error) {
 		_readChannel := make(chan StandUpPacket, 2)
 		readChannel = &_readChannel
 		readChannelIndex = writeChannelIndex + "0"
-		standUpChannels.Store(readChannelIndex, &readChannel)
+		standUpChannels.Store(readChannelIndex, readChannel)
 
 		standUpStatus.WWriteMReadIndex = readChannelIndex
 
@@ -2088,8 +2097,8 @@ func standUpMobile(c *gin.Context) (err error) {
 	for {
 		select {
 		case <-done:
-			close(*readChannel)
 			if deleteReadChannelFlag {
+				close(*readChannel)
 				standUpChannels.Delete(readChannelIndex)
 			}
 			return
@@ -2197,7 +2206,7 @@ func currentStandUp(c *gin.Context) (err error) {
 
 	standUpStatus, err := getStandUpStatusRecord(-1, teacherNo)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, JsonMessage{Message: "no class"})
+		//c.JSON(http.StatusBadRequest, JsonMessage{Message: "no class"})
 		return
 	}
 
@@ -2555,6 +2564,9 @@ func updateFaceSetByStudentNos(oldStudents []Student, newStudentNos []string, fa
 	for _, v := range newStudentNos {
 		var student *Student
 		student, err = getStudent(v)
+		if err != nil {
+			return
+		}
 
 		if student.ID == 0 {
 			continue
@@ -2697,7 +2709,7 @@ func studentWarningToIntList(record []StudentWarningRecord) (list []int) {
 
 func getStandUpStatusRecord(classID int, teacherNo string) (record *StandUpStatusRecord, err error) {
 	if classID > 0 {
-		standUpChannels.Range(func(key, value interface{}) bool {
+		standUpStatusRecord.Range(func(key, value interface{}) bool {
 			if _r, ok := value.(*StandUpStatusRecord); ok {
 				if _r.ClassID == classID {
 					record = _r
@@ -2711,7 +2723,7 @@ func getStandUpStatusRecord(classID int, teacherNo string) (record *StandUpStatu
 		}
 		return
 	} else if len(teacherNo) > 0 {
-		standUpChannels.Range(func(key, value interface{}) bool {
+		standUpStatusRecord.Range(func(key, value interface{}) bool {
 			if _r, ok := value.(*StandUpStatusRecord); ok {
 				if _r.TeacherNo == teacherNo {
 					record = _r

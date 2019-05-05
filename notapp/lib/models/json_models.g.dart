@@ -75,7 +75,7 @@ Map<String, dynamic> _$ClassesResponseToJson(ClassesResponse instance) =>
 
 StandUpStatus _$StandUpStatusFromJson(Map<String, dynamic> json) {
   return StandUpStatus(
-      id: json['id'] as int,
+      id: json['id'] as String,
       classID: json['class_id'] as int,
       teacherNo: json['teacher_no'] as String,
       wReadMWriteIndex: json['WReadMWriteIndex'] as String,
